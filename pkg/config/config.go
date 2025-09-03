@@ -37,39 +37,46 @@ func MediaPath(c Conf) string {
 func GetConf(cCtx cli.Context, Commit, Tag string) Conf {
 	var c Conf
 
-	data, err := os.ReadFile(cCtx.String("config"))
-	if err != nil {
-		c.Logger.Info("Optional config file not found", "error", err)
-		return c
+	c.Logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	configPath := cCtx.String("config")
+
+	if _, err := os.Stat(configPath); err == nil {
+		data, err := os.ReadFile(configPath)
+		if err != nil {
+			c.Logger.Error("Failed to read config file", "error", err)
+		} else {
+
+			err := yaml.Unmarshal(data, &c)
+			if err != nil {
+				c.Logger.Error("Error parsing YAML file", "error", err)
+				os.Exit(1)
+				return c
+			}
+
+			c.Logger.Info("Parsed config file at " + configPath)
+		}
 	}
 
-	err = yaml.Unmarshal(data, &c)
-	if err != nil {
-		c.Logger.Error("Error parsing YAML file", "error", err)
-		return c
-	}
+	c.Cache = cCtx.String("cache")
+	c.Data = cCtx.String("data")
+	c.Dev = cCtx.Bool("dev")
+	c.DisableAuth = cCtx.Bool("disable-auth")
+	c.LocationService = cCtx.String("location-service")
+	c.LocationDataset = cCtx.String("location-dataset")
+	c.IncludeOriginals = cCtx.Bool("include-originals")
+	c.Media = cCtx.String("media")
+	c.OnThisDay = cCtx.Bool("on-this-day")
+	c.PreGenerateThumb = cCtx.Bool("pregenerate-thumbs")
+	c.Quality = cCtx.Int("quality")
+	c.ResizeService = cCtx.String("resize_service")
+	c.SessionLength = cCtx.Int("session-length")
+	c.TileServer = cCtx.String("tile-server")
 
-	c = Conf{
-		Dev:              cCtx.Bool("dev"),
-		DisableAuth:      cCtx.Bool("disable-auth"),
-		Media:            cCtx.String("media"),
-		Cache:            cCtx.String("cache"),
-		Data:             cCtx.String("data"),
-		Quality:          cCtx.Int("quality"),
-		PreGenerateThumb: cCtx.Bool("pregenerate-thumbs"),
-		ResizeService:    cCtx.String("resize_service"),
-		LocationService:  cCtx.String("location-service"),
-		LocationDataset:  cCtx.String("location-dataset"),
-		Logger:           slog.New(slog.NewTextHandler(os.Stdout, nil)),
-		TileServer:       cCtx.String("tile-server"),
-		SessionLength:    cCtx.Int("session-length"),
-		IncludeOriginals: cCtx.Bool("include-originals"),
-		Meta: Meta{
-			Commit:     Commit,
-			Tag:        Tag,
-			CustomHTML: template.HTML(c.CustomHTML),
-		},
-		OnThisDay: cCtx.Bool("on-this-day"),
+	c.Meta = Meta{
+		Commit:     Commit,
+		CustomHTML: template.HTML(c.CustomHTML),
+		Tag:        Tag,
 	}
 
 	return c
