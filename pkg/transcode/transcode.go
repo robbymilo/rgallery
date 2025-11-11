@@ -21,14 +21,17 @@ func TranscodeVideo(original, cache string, hash uint32) error {
 
 	err = ffmpeg.Input(original).
 		Output(cache, ffmpeg.KwArgs{
-			"c:v":           "libx264",   // Encode video with H.264
-			"crf":           "23",        // Quality control (lower = better)
-			"preset":        "ultrafast", // Fast encoding
-			"c:a":           "aac",       // Re-encode audio to AAC
-			"b:a":           "128k",      // Audio bitrate
+			"c:v":           "libx264",
+			"crf":           "23",
+			"preset":        "veryfast",
+			"maxrate":       "1500k",
+			"bufsize":       "3000k",
+			"vf":            "scale=1280:-1",
+			"c:a":           "aac",
+			"b:a":           "96k",
 			"movflags":      "+faststart",
 			"start_number":  0,
-			"hls_time":      2,
+			"hls_time":      1,
 			"hls_list_size": 0,
 			"f":             "hls",
 		}).

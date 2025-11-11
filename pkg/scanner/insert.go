@@ -29,9 +29,6 @@ type Subject = types.Subject
 // addImage gathers the exif data of an image and passes it to the db inserter.
 func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache) error {
 
-	cache.Flush()
-	middleware.RemoveEtags()
-
 	image, _, err := exif.GetImageExif("image", relative_path, absolute_path, et, h, c)
 	if err != nil {
 		return fmt.Errorf("error getting exif: %v", err)
@@ -53,15 +50,15 @@ func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 		c.Logger.Info("added image with " + strconv.Itoa(generated) + " thumbnails: " + relative_path)
 	}
 
+	cache.Flush()
+	middleware.RemoveEtags()
+
 	return nil
 
 }
 
 // addVideo gathers the exif data of an image and passes it to the db inserter.
 func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache) error {
-
-	cache.Flush()
-	middleware.RemoveEtags()
 
 	media, _, err := exif.GetImageExif("video", relative_path, absolute_path, et, h, c)
 	if err != nil {
@@ -101,6 +98,9 @@ func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 		fmt.Printf("error inserting image: %s %s\n", media.Path, err)
 		return err
 	}
+
+	cache.Flush()
+	middleware.RemoveEtags()
 
 	if isUpdate {
 		c.Logger.Info("updated video with " + strconv.Itoa(generated) + " thumbnails: " + relative_path)
