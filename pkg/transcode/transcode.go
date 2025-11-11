@@ -13,7 +13,7 @@ import (
 type Conf = types.Conf
 
 // TranscodeVideo splits a video into .ts files and saves the output.
-func TranscodeVideo(original, cache string, hash uint32) error {
+func TranscodeVideo(original, cache string, hash uint32, resolution int) error {
 	err := os.MkdirAll(filepath.Dir(cache), os.ModePerm)
 	if err != nil {
 		return err
@@ -26,7 +26,7 @@ func TranscodeVideo(original, cache string, hash uint32) error {
 			"preset":        "veryfast",
 			"maxrate":       "1500k",
 			"bufsize":       "3000k",
-			"vf":            "scale=1280:-1",
+			"vf":            fmt.Sprintf("scale=-2:%d", resolution),
 			"c:a":           "aac",
 			"b:a":           "96k",
 			"movflags":      "+faststart",

@@ -7,21 +7,22 @@ import (
 )
 
 type Conf struct {
-	Dev              bool
-	DisableAuth      bool
-	Media            string
-	Cache            string
-	Data             string
-	Quality          int
-	PreGenerateThumb bool
-	ResizeService    string
-	LocationService  string
-	LocationDataset  string
-	Logger           *slog.Logger
-	TileServer       string
-	SessionLength    int
-	IncludeOriginals bool
-	Aliases          struct {
+	Dev                 bool
+	DisableAuth         bool
+	Media               string
+	Cache               string
+	Data                string
+	Quality             int
+	TranscodeResolution int
+	PreGenerateThumb    bool
+	ResizeService       string
+	LocationService     string
+	LocationDataset     string
+	Logger              *slog.Logger
+	TileServer          string
+	SessionLength       int
+	IncludeOriginals    bool
+	Aliases             struct {
 		Lenses map[string]string `yaml:"lenses"`
 	} `yaml:"aliases"`
 	CustomHTML template.HTML `yaml:"custom_html"`
