@@ -1,12 +1,4 @@
 ---
-kind: pipeline
-type: docker
-name: push
-
-platform:
-  os: linux
-  arch: amd64
-
 steps:
   - name: prettier
     image: node:20.18.3-alpine3.21
@@ -24,9 +16,6 @@ steps:
 
   - name: test
     image: golang:1.24.0-alpine3.21
-    volumes:
-      - name: deps
-        path: /usr/local/go
     commands:
       - apk add make git exiftool ffmpeg gcc g++
       - make test
@@ -35,9 +24,6 @@ steps:
 
   - name: build
     image: golang:1.24.0-bookworm
-    volumes:
-      - name: deps
-        path: /usr/local/go
     commands:
       - apt-get update && apt-get install -y make build-essential git
       - make build
@@ -46,9 +32,6 @@ steps:
 
   - name: build-assets
     image: node:20.18.3-alpine3.21
-    volumes:
-      - name: deps
-        path: /usr/local/go
     commands:
       - apk add make
       - npm ci
@@ -56,26 +39,11 @@ steps:
     depends_on:
       - prettier
 
-trigger:
+when:
   event:
     - push
 
-volumes:
-  - name: dockersock
-    host:
-      path: /var/run/docker.sock
-  - name: deps
-    temp: {}
-
 ---
-kind: pipeline
-type: docker
-name: tag
-
-platform:
-  os: linux
-  arch: amd64
-
 steps:
   - name: fetch
     image: alpine/git
@@ -98,18 +66,14 @@ steps:
 
   - name: test
     image: golang:1.24.0-alpine3.21
-    volumes:
-      - name: deps
-        path: /usr/local/go
     commands:
       - apk add make git exiftool ffmpeg gcc g++
       - make test
 
   - name: build-push-rgallery
-    image: robbymilo/drone-docker-buildx
+    image: docker
     volumes:
-      - name: dockersock
-        path: /var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
     settings:
       dockerfile: cmd/rgallery/Dockerfile
       platforms:
@@ -121,8 +85,8 @@ steps:
       password:
         from_secret: docker_password
       tags:
-        - ${DRONE_COMMIT_SHA}
-        - ${DRONE_TAG}
+        - ${CI_COMMIT_SHA}
+        - ${CI_COMMIT_TAG}
         - latest
     depends_on:
       - test
@@ -130,10 +94,9 @@ steps:
       - fetch
 
   - name: build-push-rgallery-resize
-    image: robbymilo/drone-docker-buildx
+    image: docker
     volumes:
-      - name: dockersock
-        path: /var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
     settings:
       dockerfile: cmd/rgallery-resize/Dockerfile
       platforms:
@@ -145,18 +108,17 @@ steps:
       password:
         from_secret: docker_password
       tags:
-        - resize-${DRONE_COMMIT_SHA}
-        - resize-${DRONE_TAG}
+        - resize-${CI_COMMIT_SHA}
+        - resize-${CI_COMMIT_TAG}
         - resize-latest
     depends_on:
       - test
       - lint
       - fetch
   - name: build-push-rgallery-geo
-    image: robbymilo/drone-docker-buildx
+    image: docker
     volumes:
-      - name: dockersock
-        path: /var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
     settings:
       dockerfile: cmd/rgallery-geo/Dockerfile
       platforms:
@@ -168,8 +130,8 @@ steps:
       password:
         from_secret: docker_password
       tags:
-        - geo-${DRONE_COMMIT_SHA}
-        - geo-${DRONE_TAG}
+        - geo-${CI_COMMIT_SHA}
+        - geo-${CI_COMMIT_TAG}
         - geo-latest
     depends_on:
       - test
@@ -189,22 +151,22 @@ steps:
             {
               "file_path": "environments/eu-vetrno-0/rgallery/images.libsonnet",
               "jsonnet_key": "rgallery",
-              "jsonnet_value": "robbymilo/rgallery:${DRONE_TAG}"
+              "jsonnet_value": "robbymilo/rgallery:${CI_COMMIT_TAG}"
             },
             {
               "file_path": "environments/eu-vetrno-0/rgallery/images.libsonnet",
               "jsonnet_key": "rgallery_resize",
-              "jsonnet_value": "robbymilo/rgallery:resize-${DRONE_TAG}"
+              "jsonnet_value": "robbymilo/rgallery:resize-${CI_COMMIT_TAG}"
             },
             {
               "file_path": "environments/eu-vetrno-0/rgallery/images.libsonnet",
               "jsonnet_key": "rgallery_geo",
-              "jsonnet_value": "robbymilo/rgallery:geo-${DRONE_TAG}"
+              "jsonnet_value": "robbymilo/rgallery:geo-${CI_COMMIT_TAG}"
             },
             {
               "file_path": "environments/eu-fsn-0/rgallery/images.libsonnet",
               "jsonnet_key": "rgallery",
-              "jsonnet_value": "robbymilo/rgallery:${DRONE_TAG}"
+              "jsonnet_value": "robbymilo/rgallery:${CI_COMMIT_TAG}"
             }
           ]
         }
@@ -241,29 +203,15 @@ steps:
       api_key:
         from_secret: github_token
       files: bin/*
-      title: ${DRONE_TAG}
+      title: ${CI_COMMIT_TAG}
     depends_on:
       - build-binaries
 
-trigger:
+when:
   event:
     - tag
 
-volumes:
-  - name: dockersock
-    host:
-      path: /var/run/docker.sock
-  - name: deps
-    temp: {}
 ---
-kind: pipeline
-type: docker
-name: website
-
-platform:
-  os: linux
-  arch: amd64
-
 steps:
   - name: fetch
     image: alpine/git
@@ -272,11 +220,10 @@ steps:
 
   - name: build-container
     image: docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       DOCKER_BUILDKIT: 1
-    volumes:
-      - name: dockersock
-        path: /var/run/docker.sock
     commands:
       - docker build . -f website/Dockerfile -t rgallery-website:latest --build-arg HUGO_VERSION=$(cat website/.hvm | tr -d 'v')
     depends_on:
@@ -284,7 +231,6 @@ steps:
 
   - name: build-website
     image: rgallery-website:latest
-    pull: if-not-exists
     environment:
       SHA: ${DRONE_COMMIT_SHA:0:7}
     commands:
@@ -294,27 +240,20 @@ steps:
 
   - name: deploy-production
     image: rgallery-website:latest
-    pull: if-not-exists
     environment:
       TOKEN:
         from_secret: netlify_auth_token
     commands:
       - netlify deploy --dir website/public --site 1c96423e-1f71-4f16-9d9c-967aae8feed2 --auth $TOKEN --prod
     when:
-      ref:
-        - refs/heads/main
-        - refs/tags/v*
+      - event: push
+        branch: main
+      - event: tag
+        ref: refs/tags/v*
     depends_on:
       - build-website
 
-trigger:
+when:
   event:
     - push
     - tag
-
-volumes:
-  - name: dockersock
-    host:
-      path: /var/run/docker.sock
-  - name: deps
-    temp: {}
