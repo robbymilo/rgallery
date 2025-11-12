@@ -25,9 +25,9 @@ steps:
       - make test
 
   - name: build-push-rgallery
-    image: docker
+    image: woodpeckerci/plugin-docker-buildx
     settings:
-      dockerfile: woodpeckerci/plugin-docker-buildx
+      dockerfile: cmd/rgallery/Dockerfile
       platforms:
         - linux/arm64
         - linux/amd64
