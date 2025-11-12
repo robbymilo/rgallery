@@ -26,10 +26,8 @@ steps:
 
   - name: build-push-rgallery
     image: docker
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     settings:
-      dockerfile: cmd/rgallery/Dockerfile
+      dockerfile: woodpeckerci/plugin-docker-buildx
       platforms:
         - linux/arm64
         - linux/amd64
@@ -48,9 +46,7 @@ steps:
       - fetch
 
   - name: build-push-rgallery-resize
-    image: docker
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    image: woodpeckerci/plugin-docker-buildx
     settings:
       dockerfile: cmd/rgallery-resize/Dockerfile
       platforms:
@@ -70,9 +66,7 @@ steps:
       - lint
       - fetch
   - name: build-push-rgallery-geo
-    image: docker
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    image: woodpeckerci/plugin-docker-buildx
     settings:
       dockerfile: cmd/rgallery-geo/Dockerfile
       platforms:
