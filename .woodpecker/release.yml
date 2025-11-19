@@ -1,0 +1,160 @@
+steps:
+  - name: fetch
+    image: alpine/git
+    commands:
+      - git fetch --tags
+
+  - name: prettier
+    image: node:20.18.3-alpine3.21
+    commands:
+      - apk add make
+      - npm i -g prettier
+      - make npm prettier-test
+
+  - name: lint
+    image: golang:1.24.0-alpine3.21
+    commands:
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - apk add make git curl jq gcc g++
+      - make lint
+
+  - name: test
+    image: golang:1.24.0-alpine3.21
+    commands:
+      - apk add make git exiftool ffmpeg gcc g++
+      - make test
+
+  - name: build-push-rgallery
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      dockerfile: cmd/rgallery/Dockerfile
+      platforms:
+        - linux/arm64
+        - linux/amd64
+      repo: robbymilo/rgallery
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tags:
+        - ${CI_COMMIT_SHA}
+        - ${CI_COMMIT_TAG}
+        - latest
+    depends_on:
+      - test
+      - lint
+      - fetch
+
+  - name: build-push-rgallery-resize
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      dockerfile: cmd/rgallery-resize/Dockerfile
+      platforms:
+        - linux/arm64
+        - linux/amd64
+      repo: robbymilo/rgallery
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tags:
+        - resize-${CI_COMMIT_SHA}
+        - resize-${CI_COMMIT_TAG}
+        - resize-latest
+    depends_on:
+      - test
+      - lint
+      - fetch
+  - name: build-push-rgallery-geo
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      dockerfile: cmd/rgallery-geo/Dockerfile
+      platforms:
+        - linux/arm64
+        - linux/amd64
+      repo: robbymilo/rgallery
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tags:
+        - geo-${CI_COMMIT_SHA}
+        - geo-${CI_COMMIT_TAG}
+        - geo-latest
+    depends_on:
+      - test
+      - lint
+      - fetch
+  - name: update-deployments
+    image: robbymilo/git-updater:latest
+    settings:
+      github_user: milorobot
+      github_email: milorobot@fastmail.com
+      config_json: |-
+        {
+          "destination_branch": "master",
+          "repo_owner": "robbymilo",
+          "repo_name": "deployments",
+          "update_jsonnet_attribute_configs": [
+            {
+              "file_path": "environments/eu-vetrno-0/rgallery/images.libsonnet",
+              "jsonnet_key": "rgallery",
+              "jsonnet_value": "robbymilo/rgallery:${CI_COMMIT_TAG}"
+            },
+            {
+              "file_path": "environments/eu-vetrno-0/rgallery/images.libsonnet",
+              "jsonnet_key": "rgallery_resize",
+              "jsonnet_value": "robbymilo/rgallery:resize-${CI_COMMIT_TAG}"
+            },
+            {
+              "file_path": "environments/eu-vetrno-0/rgallery/images.libsonnet",
+              "jsonnet_key": "rgallery_geo",
+              "jsonnet_value": "robbymilo/rgallery:geo-${CI_COMMIT_TAG}"
+            },
+            {
+              "file_path": "environments/eu-fsn-0/rgallery/images.libsonnet",
+              "jsonnet_key": "rgallery",
+              "jsonnet_value": "robbymilo/rgallery:${CI_COMMIT_TAG}"
+            }
+          ]
+        }
+      github_token:
+        from_secret: github_token
+    depends_on:
+      - build-push-rgallery
+      - build-push-rgallery-resize
+      - build-push-rgallery-geo
+
+  - name: build-frontend
+    image: node:20.18.3-alpine3.21
+    commands:
+      - apk add make
+      - make npm assets
+    depends_on:
+      - prettier
+      - lint
+      - test
+
+  - name: build-binaries
+    image: golang:1.24.0-bookworm
+    commands:
+      - apt-get update && apt-get install -y make build-essential git
+      - make build TARGETOS=linux TARGETARCH=amd64
+      - make build TARGETOS=linux TARGETARCH=arm64
+      - make build TARGETOS=darwin TARGETARCH=arm64
+    depends_on:
+      - build-frontend
+
+  - name: publish-release
+    image: plugins/github-release
+    settings:
+      api_key:
+        from_secret: github_token
+      files: bin/*
+      title: ${CI_COMMIT_TAG}
+    depends_on:
+      - build-binaries
+
+when:
+  event:
+    - tag
