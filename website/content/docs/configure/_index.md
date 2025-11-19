@@ -24,22 +24,23 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --dev                     Load assets from directory instead of embedding, allowing you to edit assets without a recompile. Disables caching of HTML and JSON responses. (default: false)
-   --disable-auth            Load rgallery without a login. (default: false)
-   --media value             Location of the media directory. (default: "./media")
-   --data value              Location of the database directory (default: "./data")
-   --cache value             Location of the cache directory for storing image thumbnails and video transcode files. (default: "./cache")
-   --config value            Location of the config yaml file. Only needed if using lens aliases. (default: "./config/config.yml")
-   --quality value           Thumbnail resize quality. (default: 60)
-   --pregenerate-thumbs      Generate thumbnails and video transcode files during scan. Caution - may cause high server load if set to false. (default: true)
-   --resize_service value    URL for resize service. [$RGALLERY_RESIZE_SERVICE]
-   --location-service value  URL for reverse geocode service. [$RGALLERY_LOCATION_SERVICE]
-   --location-dataset value  Dataset for reverse geocode lookup. Ex: Countries10, Countries110, Provinces10. Countries10 uses the least amount of memory, and Provinces10 the most. (default: "Provinces10")
-   --tile-server value       URL for GeoServer tiles in XYZ format, ex https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=your-api-key-here. (default: "/tiles/{z}/{x}/{y}.png") [$RGALLERY_TILE_SERVER]
-   --session-length value    Length of authenticated sessions in days. (default: 30) [$RGALLERY_SESSION_LENGTH]
-   --include-originals       Include original files in web view. Setting this to true may cause slower image loading performance. (default: false)
-   --on-this-day             Show media items that occurred on the current day in previous years. (default: true)
-   --help, -h                show help
+   --dev                         Load assets from directory instead of embedding, allowing you to edit assets without a recompile. Disables caching of HTML and JSON responses. (default: false)
+   --disable-auth                Load rgallery without a login. (default: false)
+   --media value                 Location of the media directory. (default: "./media")
+   --data value                  Location of the database directory (default: "./data")
+   --cache value                 Location of the cache directory for storing image thumbnails and video transcode files. (default: "./cache")
+   --config value                Location of the config yaml file. Only needed if using lens aliases. (default: "./config/config.yml")
+   --quality value               Thumbnail resize quality. (default: 60)
+   --transcode-resolution value  Resolution of transcoded videos. Defaults to 720p. For 1080p, set to 1920, for 4k set to 3840, for 8k set to 7680. Higher resolutions use more CPU and disk space. (default: 1280)
+   --pregenerate-thumbs          Generate thumbnails and video transcode files during scan. Caution - may cause high server load if set to false. (default: true)
+   --resize_service value        URL for resize service. [$RGALLERY_RESIZE_SERVICE]
+   --location-service value      URL for reverse geocode service. [$RGALLERY_LOCATION_SERVICE]
+   --location-dataset value      Dataset for reverse geocode lookup. Ex: Countries10, Countries110, Provinces10. Countries10 uses the least amount of memory, and Provinces10 the most. (default: "Provinces10")
+   --tile-server value           URL for GeoServer tiles in XYZ format, ex https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=your-api-key-here. (default: "/tiles/{z}/{x}/{y}.png") [$RGALLERY_TILE_SERVER]
+   --session-length value        Length of authenticated sessions in days. (default: 30) [$RGALLERY_SESSION_LENGTH]
+   --include-originals           Include original files in web view. Setting this to true may cause slower image loading performance. (default: false)
+   --on-this-day                 Show media items that occurred on the current day in previous years. (default: true)
+   --help, -h                    show help
 ```
 
 ## Configuration file

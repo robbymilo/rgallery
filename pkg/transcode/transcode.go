@@ -13,16 +13,30 @@ import (
 type Conf = types.Conf
 
 // TranscodeVideo splits a video into .ts files and saves the output.
-func TranscodeVideo(original, cache string, hash uint32) error {
-
+func TranscodeVideo(original, cache string, hash uint32, resolution int) error {
 	err := os.MkdirAll(filepath.Dir(cache), os.ModePerm)
 	if err != nil {
 		return err
 	}
 
 	err = ffmpeg.Input(original).
-		Output(cache, ffmpeg.KwArgs{"codec": "copy", "vcodec": "libx264", "crf": 31, "preset": "ultrafast", "movflags": "+faststart", "start_number": 0, "hls_time": 2, "hls_list_size": 0, "f": "hls"}).
+		Output(cache, ffmpeg.KwArgs{
+			"c:v":           "libx264",
+			"crf":           "23",
+			"preset":        "veryfast",
+			"maxrate":       "1500k",
+			"bufsize":       "3000k",
+			"vf":            fmt.Sprintf("scale=-2:%d", resolution),
+			"c:a":           "aac",
+			"b:a":           "96k",
+			"movflags":      "+faststart",
+			"start_number":  0,
+			"hls_time":      1,
+			"hls_list_size": 0,
+			"f":             "hls",
+		}).
 		Run()
+
 	return err
 }
 

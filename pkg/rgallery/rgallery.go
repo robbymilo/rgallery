@@ -74,6 +74,11 @@ func SetupApp(Commit, Tag string) {
 			Usage: "Thumbnail resize quality.",
 			Value: 60,
 		},
+		&cli.IntFlag{
+			Name:  "transcode-resolution",
+			Usage: "Resolution of transcoded videos. Defaults to 720p. For 1080p, set to 1920, for 4k set to 3840, for 8k set to 7680. Higher resolutions use more CPU and disk space.",
+			Value: 1280,
+		},
 		&cli.BoolFlag{
 			Name:  "pregenerate-thumbs",
 			Usage: "Generate thumbnails and video transcode files during scan. Caution - may cause high server load if set to false.",

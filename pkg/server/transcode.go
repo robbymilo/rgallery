@@ -49,7 +49,7 @@ func ServeTranscode(w http.ResponseWriter, r *http.Request) {
 
 			// send to TranscodeVideo
 			original := resize.CreateOriginalFilePath(video.Path, c)
-			err = transcode.TranscodeVideo(original, index_file, hash)
+			err = transcode.TranscodeVideo(original, index_file, hash, c.TranscodeResolution)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err := w.Write([]byte("503\n"))
