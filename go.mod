@@ -20,7 +20,7 @@ require (
 	github.com/twpayne/go-mbtiles v0.0.2
 	github.com/u2takey/ffmpeg-go v0.5.0
 	github.com/urfave/cli/v2 v2.27.1
-	golang.org/x/crypto v0.35.0
+	golang.org/x/crypto v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.34.4
 	zombiezen.com/go/sqlite v1.4.0
@@ -61,7 +61,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
 	golang.org/x/image v0.18.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	modernc.org/gc/v3 v3.0.0-20241004144649-1aea3fae8852 // indirect
