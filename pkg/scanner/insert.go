@@ -87,7 +87,7 @@ func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 	// pre-transcode image
 	if c.PreGenerateThumb || regenThumb {
 		index_file := transcode.CreateHLSIndexFilePath(media.Hash, c)
-		err = transcode.TranscodeVideo(absolute_path, index_file, media.Hash, c.TranscodeResolution)
+		err = transcode.TranscodeWithLock(absolute_path, index_file, media.Hash, c)
 		if err != nil {
 			return fmt.Errorf("error transcoding video: %v", err)
 		}
