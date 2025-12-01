@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/robbymilo/rgallery/pkg/config"
 	"github.com/robbymilo/rgallery/pkg/types"
@@ -12,8 +13,12 @@ import (
 
 type Conf = types.Conf
 
+var transcodeLock sync.Mutex
+
 // TranscodeVideo splits a video into .ts files and saves the output.
-func TranscodeVideo(original, cache string, hash uint32, resolution int) error {
+func TranscodeVideo(original, cache string, hash uint32, c Conf) error {
+	c.Logger.Info("starting transcoding", "file", original)
+
 	err := os.MkdirAll(filepath.Dir(cache), os.ModePerm)
 	if err != nil {
 		return err
@@ -26,7 +31,7 @@ func TranscodeVideo(original, cache string, hash uint32, resolution int) error {
 			"preset":        "veryfast",
 			"maxrate":       "1500k",
 			"bufsize":       "3000k",
-			"vf":            fmt.Sprintf("scale=-2:%d", resolution),
+			"vf":            fmt.Sprintf("scale=-2:%d", c.TranscodeResolution),
 			"c:a":           "aac",
 			"b:a":           "96k",
 			"movflags":      "+faststart",
@@ -37,7 +42,19 @@ func TranscodeVideo(original, cache string, hash uint32, resolution int) error {
 		}).
 		Run()
 
+	c.Logger.Info("finished transcoding", "file", original)
+
 	return err
+}
+
+// TranscodeWithLock ensures only one video is transcoded at a time.
+func TranscodeWithLock(original, cache string, hash uint32, c Conf) error {
+	// Acquire the lock
+	transcodeLock.Lock()
+	defer transcodeLock.Unlock()
+
+	// Perform the transcoding
+	return TranscodeVideo(original, cache, hash, c)
 }
 
 // CreateHLSIndexFilePath creates a string of the path where the HLS index file lives.

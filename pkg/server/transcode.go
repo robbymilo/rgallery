@@ -39,21 +39,24 @@ func ServeTranscode(w http.ResponseWriter, r *http.Request) {
 			}
 
 		} else {
+
 			// get original file path from db
 			video, err := queries.GetSingleMediaItem(hash, c)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err := w.Write([]byte("503\n"))
 				fmt.Println("error getting single media item:", err)
+				return
 			}
 
-			// send to TranscodeVideo
+			// Use TranscodeWithLock to ensure only one transcoding process runs at a time
 			original := resize.CreateOriginalFilePath(video.Path, c)
-			err = transcode.TranscodeVideo(original, index_file, hash, c.TranscodeResolution)
+			err = transcode.TranscodeWithLock(original, index_file, hash, c)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err := w.Write([]byte("503\n"))
 				fmt.Println("error transcoding video:", err)
+				return
 			}
 
 			file, err = os.ReadFile(index_file)
