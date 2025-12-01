@@ -87,12 +87,13 @@ steps:
       - fetch
   - name: update-deployments
     image: robbymilo/git-updater:latest
+    failure: ignore
     settings:
       github_user: milorobot
       github_email: milorobot@fastmail.com
       config_json: |-
         {
-          "destination_branch": "master",
+          "destination_branch": "main",
           "repo_owner": "robbymilo",
           "repo_name": "deployments",
           "update_jsonnet_attribute_configs": [
