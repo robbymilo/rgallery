@@ -25,6 +25,7 @@ func TestStringToDate(t *testing.T) {
 	time_strings["20190323_wedding.jpg"] = "2019-03-23 00:00:00Z"
 	time_strings["20190323_1.jpg"] = "2019-03-23 00:00:00Z"
 	time_strings["20190323_2.jpg"] = "2019-03-23 00:00:00Z"
+	time_strings["20190323.jpg"] = "2019-03-23 00:00:00Z"
 
 	for filename, ts := range time_strings {
 		expected, _ := time.Parse("2006-01-02 15:04:05.999Z", ts)

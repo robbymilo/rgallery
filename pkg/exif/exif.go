@@ -403,11 +403,13 @@ var numbersOnly = regexp.MustCompile(`[^0-9]+`)
 // stringToDate attempts to get a time from an arbitrary string such as a filename.
 func stringToDate(date_string string) (time.Time, error) {
 
-	// try for unix time
+	// try for unix time (only when the numeric token is long enough to be milliseconds)
 	unix_string := strings.Split(date_string, ".")
-	t, err := unixStringToTime(unix_string[0])
-	if err == nil {
-		return t, nil
+	if len(unix_string[0]) >= 11 {
+		t, err := unixStringToTime(unix_string[0])
+		if err == nil {
+			return t, nil
+		}
 	}
 
 	// try for YMD variants
