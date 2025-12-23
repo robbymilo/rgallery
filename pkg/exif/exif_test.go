@@ -19,6 +19,8 @@ func TestStringToDate(t *testing.T) {
 	time_strings["20190323-wedding.jpg"] = "2019-03-23 00:00:00Z"
 	time_strings["20190323-1.jpg"] = "2019-03-23 00:00:00Z"
 	time_strings["20190323-2.jpg"] = "2019-03-23 00:00:00Z"
+	time_strings["20190323_wedding-03.jpg"] = "2019-03-23 00:00:00Z"
+	time_strings["20190323-wedding_03.jpg"] = "2019-03-23 00:00:00Z"
 	time_strings["20190323_wedding_03.jpg"] = "2019-03-23 00:00:00Z"
 	time_strings["20190323_wedding.jpg"] = "2019-03-23 00:00:00Z"
 	time_strings["20190323_1.jpg"] = "2019-03-23 00:00:00Z"
