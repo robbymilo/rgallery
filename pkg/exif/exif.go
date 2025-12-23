@@ -152,9 +152,6 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 			}
 		}
 
-		fmt.Println(stringToDate(filepath.Base(absolute_path)))
-		fmt.Println(filepath.Base(absolute_path))
-
 		// get UTC offset
 		var dateOriginal time.Time
 		var offsetMinutes float64
