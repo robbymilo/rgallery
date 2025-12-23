@@ -56,7 +56,7 @@ func deleteMediaItem(path string, removeDeletedThumbnails bool, media Media, c C
 			// if no other items have the tag
 			if !rows.Next() {
 				// delete tag
-				c.Logger.Info("deleting " + tag.Key)
+				c.Logger.Info("deleting tag " + tag.Key)
 				_, err = db.Exec("DELETE FROM tags WHERE id =?", hash.GetHash(tag.Key))
 				if err != nil {
 					return err
@@ -78,7 +78,7 @@ func deleteMediaItem(path string, removeDeletedThumbnails bool, media Media, c C
 		// if no other items have the folder
 		if !rows.Next() {
 			// delete folder
-			c.Logger.Info("deleting " + media.Folder)
+			c.Logger.Info("deleting folder " + media.Folder)
 			_, err = db.Exec("DELETE FROM folders WHERE key =?", media.Folder)
 			if err != nil {
 				return err

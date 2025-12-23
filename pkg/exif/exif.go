@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/araddon/dateparse"
 	exiftool "github.com/barasher/go-exiftool"
@@ -402,36 +403,102 @@ var numbersOnly = regexp.MustCompile(`[^0-9]+`)
 // stringToDate attempts to get a time from an arbitrary string such as a filename.
 func stringToDate(date_string string) (time.Time, error) {
 
-	// try for unix time
+	// try for unix time (only when the numeric token is long enough to be milliseconds)
 	unix_string := strings.Split(date_string, ".")
-	t, err := unixStringToTime(unix_string[0])
-	if err == nil {
-		return t, nil
+	if len(unix_string[0]) >= 11 {
+		t, err := unixStringToTime(unix_string[0])
+		if err == nil {
+			return t, nil
+		}
 	}
 
 	// try for YMD variants
-	var time_string string
+	var raw_sub string
 
 	if strings.Contains(date_string, "20") {
-		time_string = date_string[strings.Index(date_string, "20"):]
+		raw_sub = date_string[strings.Index(date_string, "20"):]
 	} else if strings.Contains(date_string, "19") {
-		time_string = date_string[strings.Index(date_string, "19"):]
+		raw_sub = date_string[strings.Index(date_string, "19"):]
+	} else {
+		raw_sub = date_string
 	}
 
-	time_string = strings.Replace(time_string, "_", "", -1)
-	time_string = strings.Replace(time_string, "-", "", -1)
+	// Collect digits and common separators until we hit a letter,
+	// so we don't accidentally append unrelated trailing numbers.
+	var buf strings.Builder
+	for _, r := range raw_sub {
+		if unicode.IsDigit(r) || r == '_' || r == '-' || r == '.' {
+			buf.WriteRune(r)
+		} else if unicode.IsLetter(r) {
+			// stop collecting once we hit letters (e.g. "-wedding..."), keep what we have so far
+			break
+		} else {
+			// other characters: skip but continue collecting to allow patterns like "2014-06-11_14.26.04"
+			continue
+		}
+	}
+
+	time_string := buf.String()
+	// remove separators
+	time_string = strings.ReplaceAll(time_string, "_", "")
+	time_string = strings.ReplaceAll(time_string, "-", "")
+	time_string = strings.ReplaceAll(time_string, ".", "")
 	time_string = numbersOnly.ReplaceAllString(time_string, "")
 
+	// Need at least YYYYMMDD; try parsing raw_sub if too short
+	if len(time_string) < 8 {
+		tp, err := dateparse.ParseAny(raw_sub)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return time.Date(tp.Year(), tp.Month(), tp.Day(), tp.Hour(), tp.Minute(), tp.Second(), tp.Nanosecond(), time.UTC), nil
+	}
+
+	// Truncate to a maximum of 14 characters (YYYYMMDDHHMMSS)
 	if len(time_string) > 14 {
 		time_string = time_string[:14]
 	}
 
-	t, err = dateparse.ParseAny(time_string)
-	if err != nil {
-		return time.Time{}, err
+	// If the numeric string length isn't one of the expected lengths,
+	// prefer the YYYYMMDD date-only form by truncating to 8 digits.
+	if !(len(time_string) == 8 || len(time_string) == 10 || len(time_string) == 12 || len(time_string) == 14) {
+		if len(time_string) > 8 {
+			time_string = time_string[:8]
+		}
 	}
 
-	return t, nil
+	var layout string
+	switch len(time_string) {
+	case 14:
+		layout = "20060102150405"
+	case 12:
+		layout = "200601021504"
+	case 10:
+		layout = "2006010215"
+	case 8:
+		layout = "20060102"
+	default:
+		// fallback to dateparse if unusual length
+		tp, err := dateparse.ParseAny(time_string)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return time.Date(tp.Year(), tp.Month(), tp.Day(), tp.Hour(), tp.Minute(), tp.Second(), tp.Nanosecond(), time.UTC), nil
+	}
+
+	// Parse with chosen layout
+	parsed, err := time.Parse(layout, time_string)
+	if err != nil {
+		// fallback to dateparse
+		tp, err2 := dateparse.ParseAny(time_string)
+		if err2 != nil {
+			return time.Time{}, err
+		}
+		return time.Date(tp.Year(), tp.Month(), tp.Day(), tp.Hour(), tp.Minute(), tp.Second(), tp.Nanosecond(), time.UTC), nil
+	}
+
+	// Return the same wall-clock time but set to UTC (avoid applying local TZ offset)
+	return time.Date(parsed.Year(), parsed.Month(), parsed.Day(), parsed.Hour(), parsed.Minute(), parsed.Second(), parsed.Nanosecond(), time.UTC), nil
 }
 
 func unixStringToTime(u string) (time.Time, error) {
