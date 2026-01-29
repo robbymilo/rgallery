@@ -56,13 +56,11 @@ const MemoryCard: React.FC<{ memory: Memory }> = ({ memory }) => {
           }
 
           // If overlay, link to date, else link to media
-          const to = isOverlay ? `/?date=${memory.value}` : `/media/${hash}`;
-
+          const to = isOverlay ? `/?date=${memory.value}` : `/media/${item.hash}`;
           return (
-            <Link key={`${memory.key}_${item.id}`} to={to} className={cellClass} title={item.title}>
+            <Link key={`${item.hash}`} to={to} className={cellClass}>
               <img
-                src={item.thumbnailUrl}
-                alt={item.title}
+                alt={item.path}
                 srcSet={srcset}
                 className="h-full w-full object-cover transition-transform duration-700"
                 loading="lazy"
