@@ -5,18 +5,8 @@ steps:
       - apk add make
       - npm ci
       - make npm prettier-test
-
-  - name: typecheck
-    image: node:24.12.0-alpine3.22
-    environment:
-      SHA: ${CI_COMMIT_SHA:0:7}
-    commands:
-      - apk add make git
-      - npm ci
       - make sha
       - make typecheck
-    depends_on:
-      - prettier
 
   - name: lint
     image: golangci/golangci-lint:v2.8.0
