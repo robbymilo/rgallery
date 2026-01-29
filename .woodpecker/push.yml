@@ -12,6 +12,7 @@ steps:
       SHA: ${CI_COMMIT_SHA:0:7}
     commands:
       - apk add make git
+      - npm ci
       - make sha
       - make typecheck
     depends_on:
@@ -20,7 +21,6 @@ steps:
   - name: lint
     image: golangci/golangci-lint:v2.8.0
     commands:
-      - npm ci
       - make lint
 
   - name: test
