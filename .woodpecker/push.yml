@@ -20,6 +20,7 @@ steps:
   - name: lint
     image: golangci/golangci-lint:v2.8.0
     commands:
+      - npm ci
       - make lint
 
   - name: test
