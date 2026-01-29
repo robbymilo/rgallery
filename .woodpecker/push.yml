@@ -18,10 +18,8 @@ steps:
       - prettier
 
   - name: lint
-    image: golang:1.24.0-alpine3.21
+    image: golangci/golangci-lint:v2.8.0
     commands:
-      - apk add make git curl jq gcc g++
-      - go install github.com/golangci/golangci-lint/cmd/golangci-lint/v2@v2.8.0
       - make lint
 
   - name: test
