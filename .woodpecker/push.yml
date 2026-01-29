@@ -11,7 +11,7 @@ steps:
     environment:
       SHA: ${CI_COMMIT_SHA:0:7}
     commands:
-      - apk add make
+      - apk add make git
       - make sha
       - make typecheck
 
