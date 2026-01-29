@@ -126,7 +126,11 @@ func fetchTotalCount(conn *sqlite.Conn, params *FilterParams, c Conf) (int, erro
 	if err != nil {
 		return 0, fmt.Errorf("prepare count: %w (query: %s)", err, query)
 	}
-	defer stmt.Finalize()
+	defer func() {
+		if err := stmt.Finalize(); err != nil {
+			c.Logger.Error("timeline: finalize stmt error: %v", err)
+		}
+	}()
 
 	bindArgs(stmt, args)
 
@@ -156,7 +160,11 @@ func fetchTimelineStats(conn *sqlite.Conn, params *FilterParams, c Conf) ([]Time
 	if err != nil {
 		return nil, fmt.Errorf("prepare timeline: %w", err)
 	}
-	defer stmt.Finalize()
+	defer func() {
+		if err := stmt.Finalize(); err != nil {
+			c.Logger.Error("timeline: finalize stmt error: %v", err)
+		}
+	}()
 
 	bindArgs(stmt, args)
 
@@ -206,7 +214,11 @@ func fetchPhotos(conn *sqlite.Conn, params *FilterParams, c Conf) ([]Photo, erro
 	if err != nil {
 		return nil, fmt.Errorf("prepare photos: %w", err)
 	}
-	defer stmt.Finalize()
+	defer func() {
+		if err := stmt.Finalize(); err != nil {
+			c.Logger.Error("timeline: finalize stmt error: %v", err)
+		}
+	}()
 
 	bindArgs(stmt, args)
 

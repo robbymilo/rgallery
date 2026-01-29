@@ -103,7 +103,10 @@ func SendToAllUsers(conn *sqlite.Conn, message string) error {
 	stmt.BindText(1, message)
 	stmt.BindText(2, createdAt)
 	_, err = stmt.Step()
-	stmt.Finalize()
+	if err != nil {
+		return err
+	}
+	err = stmt.Finalize()
 	if err != nil {
 		return err
 	}

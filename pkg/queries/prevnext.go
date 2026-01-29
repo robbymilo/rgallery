@@ -214,7 +214,7 @@ func GetNext(date time.Time, hash uint32, total int, params FilterParams, previo
 	}
 	if focallength35 != 0 {
 		stmt.BindFloat(paramIdx, focallength35)
-		paramIdx++
+		paramIdx++ //nolint:all
 	}
 
 	next := make([]PrevNext, 0)
@@ -456,7 +456,7 @@ func GetPrevious(date time.Time, hash uint32, params FilterParams, c Conf) ([]Pr
 	}
 	if focallength35 != 0 {
 		stmt.BindFloat(paramIdx, focallength35)
-		paramIdx++
+		paramIdx++ //nolint:all
 	}
 
 	previous := make([]PrevNext, 0)

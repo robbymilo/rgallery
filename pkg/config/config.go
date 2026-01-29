@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/robbymilo/rgallery/pkg/types"
-	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v3"
+	cli "github.com/urfave/cli/v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type Meta = types.Meta
