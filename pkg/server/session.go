@@ -46,7 +46,9 @@ func SignIn(w http.ResponseWriter, r *http.Request, c Conf) error {
 	// compare password with hash
 	if err = bcrypt.CompareHashAndPassword([]byte(storedCreds.Password), []byte(creds.Password)); err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`Invalid credentials`))
+		if _, err := w.Write([]byte(`Invalid credentials`)); err != nil {
+			c.Logger.Error("failed to write response: %v", "err", err)
+		}
 		return fmt.Errorf("error comparing supplied password with hash: %v", err)
 	}
 
@@ -56,7 +58,9 @@ func SignIn(w http.ResponseWriter, r *http.Request, c Conf) error {
 	err = sessions.CreateSession(storedCreds.Username, storedCreds.Role, token, expires, c)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`Success`))
+		if _, err := w.Write([]byte(`Success`)); err != nil {
+			c.Logger.Error("failed to write response: %v", "err", err)
+		}
 		return fmt.Errorf("error generating session: %v", err)
 	}
 
@@ -99,7 +103,9 @@ func ServeLogOut(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`Logged out`))
+	if _, err := w.Write([]byte(`Logged out`)); err != nil {
+		c.Logger.Error("failed to write response: %v", "err", err)
+	}
 
 }
 

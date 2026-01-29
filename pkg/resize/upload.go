@@ -40,7 +40,11 @@ func ResizeImageUpload(w http.ResponseWriter, r *http.Request, c Conf) error {
 	if err != nil {
 		return fmt.Errorf("error opening file: %v", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			c.Logger.Error("file.Close error:", "err", err)
+		}
+	}()
 
 	imgByte, err := io.ReadAll(file)
 	if err != nil {
@@ -56,7 +60,11 @@ func ResizeImageUpload(w http.ResponseWriter, r *http.Request, c Conf) error {
 		if err != nil {
 			return fmt.Errorf("failed to create temporary directory: %v", err)
 		}
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			if err := os.RemoveAll(tmpDir); err != nil {
+				c.Logger.Error("os.RemoveAll error:", "err", err)
+			}
+		}()
 
 		// write temp heic file
 		temp_id := uuid.NewString()
@@ -79,7 +87,11 @@ func ResizeImageUpload(w http.ResponseWriter, r *http.Request, c Conf) error {
 		if err != nil {
 			return fmt.Errorf("error opening temp jpg: %v", err)
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				c.Logger.Error("file.Close error:", "err", err)
+			}
+		}()
 
 		// read the temp jpg
 		imgByte, err = io.ReadAll(file)

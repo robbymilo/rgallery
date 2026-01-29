@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -38,7 +37,7 @@ func ServeTag(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte("404\n"))
 		if err != nil {
-			fmt.Println(err)
+			c.Logger.Error("error writing 404 response:", "err", err)
 		}
 		return
 	}

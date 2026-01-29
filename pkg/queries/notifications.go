@@ -17,7 +17,11 @@ func Notify(c Conf, message string, status string) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 	return notify.SendToAllUsers(conn, message)
 }
 
@@ -69,7 +73,11 @@ func MarkNotificationRead(c Conf, id int64, username string) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 
 	err = sqlitex.Execute(conn, "INSERT OR REPLACE INTO notifications_dismissed (notification_id, username, dismissed, dismissed_at) VALUES (?, ?, 1, CURRENT_TIMESTAMP)", &sqlitex.ExecOptions{
 		Args: []interface{}{id, username},
@@ -82,10 +90,14 @@ func MarkNotificationRead(c Conf, id int64, username string) error {
 func ClearAllNotifications(c Conf, username string) error {
 	conn, err := sqlite.OpenConn(database.NewSqlConnectionString(c), sqlite.OpenReadWrite)
 	if err != nil {
-		c.Logger.Error("error opening db", "error", err)
+		c.Logger.Error("error opening db", "err", err)
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 
 	err = sqlitex.Execute(conn, "INSERT OR REPLACE INTO notifications_dismissed (notification_id, username, dismissed, dismissed_at) SELECT id, ?, 1, CURRENT_TIMESTAMP FROM notifications", &sqlitex.ExecOptions{
 		Args: []interface{}{username},

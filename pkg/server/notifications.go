@@ -37,7 +37,9 @@ func ServeNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(notifications)
+	if err := json.NewEncoder(w).Encode(notifications); err != nil {
+		c.Logger.Error("failed to encode notifications: %v", "err", err)
+	}
 }
 
 // MarkNotificationRead marks a notification as read

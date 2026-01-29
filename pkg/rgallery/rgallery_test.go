@@ -156,7 +156,11 @@ func testResponse(t *testing.T, path string, json_relative_path string) {
 		fmt.Println(err)
 	}
 
-	defer json_file.Close()
+	defer func() {
+		if err := json_file.Close(); err != nil {
+			t.Log("json_file.Close error:", err)
+		}
+	}()
 
 	json_byte, err := io.ReadAll(json_file)
 	if err != nil {
@@ -180,7 +184,11 @@ func testStatusCode(t *testing.T, path string, statusCode int) {
 
 	router(w, r, ca)
 	res := w.Result()
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			t.Log("res.Body.Close error:", err)
+		}
+	}()
 
 	assert.EqualValues(t, statusCode, res.StatusCode, "they should be equal")
 

@@ -12,10 +12,7 @@ func ServeProfile(w http.ResponseWriter, r *http.Request, c Conf) {
 		user = r.Context().Value(UserKey{}).(UserKey)
 	}
 
-	response := ResponseProfile{
-		UserName: user.UserName,
-		UserRole: user.UserRole,
-	}
+	response := ResponseProfile(user)
 
 	w.Header().Set("Cache-Control", "private, max-age=0, must-revalidate")
 

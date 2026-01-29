@@ -35,7 +35,11 @@ func GetLens(absolute_path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error starting exiftool: %v", err)
 	}
-	defer et.Close()
+	defer func() {
+		if err := et.Close(); err != nil {
+			fmt.Printf("error closing exiftool: %v\n", err)
+		}
+	}()
 
 	exif := et.ExtractMetadata(absolute_path)
 
@@ -217,7 +221,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 			case reflect.String:
 				v := fmt.Sprint(fileInfo.Fields["Subject"])
 
-				k := strings.Replace(strings.ToLower(v), " ", "-", -1)
+				k := strings.ReplaceAll(strings.ToLower(v), " ", "-")
 				var r Subject
 				r.Key = k
 				r.Value = v
@@ -227,7 +231,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 				s := reflect.ValueOf(fileInfo.Fields["Subject"])
 				for i := 0; i < s.Len(); i++ {
 					v := fmt.Sprint(s.Index(i))
-					k := strings.Replace(strings.ToLower(v), " ", "-", -1)
+					k := strings.ReplaceAll(strings.ToLower(v), " ", "-")
 
 					var r Subject
 					r.Key = k

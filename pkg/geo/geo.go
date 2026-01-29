@@ -71,7 +71,11 @@ func ReverseGeocode(lon, lat float64, c Conf) (Location, error) {
 	if err != nil {
 		return Location{}, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			c.Logger.Error("response.Body.Close error", "err", err)
+		}
+	}()
 
 	jsonData, err := io.ReadAll(response.Body)
 	if err != nil {

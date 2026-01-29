@@ -29,7 +29,11 @@ func deleteMediaItem(path string, removeDeletedThumbnails bool, media Media, c C
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer func() {
+			if err := db.Close(); err != nil {
+				c.Logger.Error("db.Close error", "err", err)
+			}
+		}()
 
 		// delete image
 		_, err = db.Exec("DELETE FROM media WHERE hash =?", media.Hash)
@@ -51,7 +55,11 @@ func deleteMediaItem(path string, removeDeletedThumbnails bool, media Media, c C
 			if err != nil {
 				return err
 			}
-			defer rows.Close()
+			defer func() {
+				if err := rows.Close(); err != nil {
+					c.Logger.Error("rows.Close error", "err", err)
+				}
+			}()
 
 			// if no other items have the tag
 			if !rows.Next() {
@@ -73,7 +81,11 @@ func deleteMediaItem(path string, removeDeletedThumbnails bool, media Media, c C
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
+		defer func() {
+			if err := rows.Close(); err != nil {
+				c.Logger.Error("rows.Close error", "err", err)
+			}
+		}()
 
 		// if no other items have the folder
 		if !rows.Next() {

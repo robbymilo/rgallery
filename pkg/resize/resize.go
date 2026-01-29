@@ -15,6 +15,7 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/robbymilo/rgallery/pkg/config"
 	"github.com/robbymilo/rgallery/pkg/sizes"
+
 	"github.com/robbymilo/rgallery/pkg/types"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
@@ -232,7 +233,11 @@ func saveTempHeic(path string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to create temporary directory: %v", err)
 		}
-		defer os.RemoveAll(tmpDir)
+		defer func() {
+			if err := os.RemoveAll(tmpDir); err != nil {
+				fmt.Printf("os.RemoveAll error: %v\n", err)
+			}
+		}()
 
 		tmpFile := tmpDir + filepath.Base(path) + ".jpg"
 		cmd := exec.Command("vips", "resize", path, tmpFile, "1")
@@ -258,7 +263,11 @@ func DecodeImage(path string) (image.Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("os.Open failed: %v", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Printf("file.Close error: %v", err)
+		}
+	}()
 
 	img, _, err = imageorient.Decode(f)
 	if err != nil {

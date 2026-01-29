@@ -39,7 +39,9 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			c.Logger.Error("recovered from panic in scanner", "panic", r)
-			queries.Notify(c, "Scan encountered an error but will continue.", "scanning")
+			if err := queries.Notify(c, "Scan encountered an error but will continue.", "scanning"); err != nil {
+				c.Logger.Error("failed to notify", "err", err)
+			}
 			// Ensure scan lock is released even after panic
 			SetScanInProgress(false)
 
@@ -53,7 +55,9 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 	// Check if a scan is already in progress using our global variable
 	if IsScanInProgress() {
 		c.Logger.Info("scan already in progress")
-		queries.Notify(c, "Scan already in progress.", "scanning")
+		if err := queries.Notify(c, "Scan already in progress.", "scanning"); err != nil {
+			c.Logger.Error("failed to notify", "err", err)
+		}
 
 		return "scan already in progress", nil
 	} else {
@@ -69,7 +73,9 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		var unsupportedPaths []string
 
 		c.Logger.Info("scanning media at " + config.MediaPath(c))
-		queries.Notify(c, "Scan started at "+config.MediaPath(c)+".", "scanning")
+		if err := queries.Notify(c, "Scan started at "+config.MediaPath(c)+".", "scanning"); err != nil {
+			c.Logger.Error("failed to notify", "err", err)
+		}
 
 		var h *geo.Handlers
 		if c.LocationService == "" {
@@ -93,7 +99,11 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("error starting exiftool %v", err)
 		}
-		defer et.Close()
+		defer func() {
+			if err := et.Close(); err != nil {
+				c.Logger.Error("et.Close error", "err", err)
+			}
+		}()
 
 		// get all current media items
 		items, err := queries.GetMediaItems(0, "ASC", -1, c)
@@ -112,7 +122,9 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 			// check for cancellation
 			if isCanceled() {
 				c.Logger.Info("scan canceled by user")
-				queries.Notify(c, "Scan canceled while checking for modified and deleted items.", "canceled")
+				if err := queries.Notify(c, "Scan canceled while checking for modified and deleted items.", "canceled"); err != nil {
+					c.Logger.Error("Notify error", "err", err)
+				}
 				SetScanInProgress(false)
 				// reset cancel channel
 				resetCancelChan(nil)
@@ -129,7 +141,9 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 				}
 
 				c.Logger.Info("removed item " + item.Path)
-				queries.Notify(c, "Removed item: "+item.Path, "scanning")
+				if err := queries.Notify(c, "Removed item: "+item.Path, "scanning"); err != nil {
+					c.Logger.Error("Notify error", "err", err)
+				}
 
 			} else {
 
@@ -141,7 +155,9 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					if err != nil {
 						c.Logger.Error("error updating media item", "error", err)
 					} else {
-						queries.Notify(c, "Updated media: "+item.Path, "scanning")
+						if err := queries.Notify(c, "Updated media: "+item.Path, "scanning"); err != nil {
+							c.Logger.Error("Notify error", "err", err)
+						}
 					}
 
 				} else if scanType == "deep" {
@@ -441,7 +457,7 @@ func mediaModified(media Media, c Conf) bool {
 	media_path := config.MediaPath(c)
 	file, err := os.Stat(filepath.Join(media_path, media.Path))
 	if err != nil {
-		fmt.Println("error stating file:", err)
+		c.Logger.Error("error stating file:", "err", err)
 	}
 
 	db_modified := media.Modified.Format("2006-01-02T15:04:05")
