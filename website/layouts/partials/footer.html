@@ -1,6 +1,6 @@
 <footer class="main bg-gray-800">
-  <div class="max-w-md px-4 pt-2 pb-6 mx-auto overflow-hidden sm:max-w-3xl sm:px-6 lg:max-w-7xl lg:px-8">
-    <div class="flex justify-center mt-4 space-x-6">
+  <div class="mx-auto max-w-md overflow-hidden px-4 pt-2 pb-6 sm:max-w-3xl sm:px-6 lg:max-w-7xl lg:px-8">
+    <div class="mt-4 flex justify-center space-x-6">
       <a
         href="https://github.com/robbymilo/rgallery"
         target="_blank"
@@ -8,7 +8,7 @@
         class="text-gray-400 hover:text-gray-300"
         ><span class="sr-only">GitHub</span
         ><svg
-          class="w-6 h-6"
+          class="h-6 w-6"
           fill="currentcolor"
           viewBox="0 0 24 24"
           aria-hidden="true"
@@ -22,11 +22,11 @@
           ></path></svg
       ></a>
     </div>
-    <p class="mt-2 text-base text-center text-gray-400">
+    <p class="mt-2 text-center text-base text-gray-400">
       rgallery © Robby Milo
       {{ now.Format "2006" }}
     </p>
-    <p class="max-w-4xl mx-auto mt-3 text-base text-center text-gray-400 text-xs">
+    <p class="mx-auto mt-3 max-w-4xl text-center text-base text-xs text-gray-400">
       {{ (site.GetPage "/").Params.footer_notice | markdownify }}
     </p>
   </div>

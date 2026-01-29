@@ -12,7 +12,9 @@ type UserKey = types.UserKey
 
 // ServeAdmin serves the admin page.
 func ServeAdmin(w http.ResponseWriter, r *http.Request, c Conf) {
-	keys, err := users.GetKeyNames(c)
+	var keys []users.ApiCredentials
+	var err error
+	keys, err = users.GetKeyNames(c)
 	if err != nil {
 		c.Logger.Error("error listing keys", "error", err)
 		return
@@ -40,7 +42,7 @@ func ServeAdmin(w http.ResponseWriter, r *http.Request, c Conf) {
 
 	w.Header().Set("Cache-Control", "private, max-age=0, must-revalidate")
 
-	err = render.Render(w, r, response, "admin")
+	err = render.RenderJson(w, r, response)
 	if err != nil {
 		c.Logger.Error("error rendering admin response", "error", err)
 	}

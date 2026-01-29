@@ -27,7 +27,7 @@ type Conf struct {
 	} `yaml:"aliases"`
 	CustomHTML template.HTML `yaml:"custom_html"`
 	Meta       Meta
-	OnThisDay  bool
+	Memories   bool
 }
 
 type MediaItems []Media
@@ -109,7 +109,7 @@ type Subject struct {
 type Days []Day
 
 type Day struct {
-	Key   string  `json:"key"`
+	Key   int     `json:"key"`
 	Value string  `json:"value"`
 	Media []Media `json:"media"`
 	Total int     `json:"total"`
@@ -151,15 +151,9 @@ type Filter struct {
 }
 
 type ResponseMedia struct {
-	Media         Media      `json:"media"`
-	Previous      []PrevNext `json:"previous"`
-	Next          []PrevNext `json:"next"`
-	Collection    string     `json:"collection"`
-	Slug          string     `json:"slug"`
-	Section       string     `json:"-"`
-	HideNavFooter bool       `json:"-"`
-	TileServer    string     `json:"-"`
-	Meta          Meta       `json:"-"`
+	Media    Media      `json:"media"`
+	Previous []PrevNext `json:"previous"`
+	Next     []PrevNext `json:"next"`
 }
 
 type PrevNext struct {
@@ -298,6 +292,11 @@ type ResponseAdmin struct {
 	Meta          Meta `json:"-"`
 }
 
+type ResponseProfile struct {
+	UserName string `json:"userName"`
+	UserRole string `json:"userRole"`
+}
+
 type ResponseNotFound struct {
 	Title         string `json:"-"`
 	Message       string `json:"-"`
@@ -309,6 +308,7 @@ type FilterParams struct {
 	PageSize      int
 	Json          bool
 	Page          int
+	Cursor        int // Used as OFFSET
 	Rating        int
 	Direction     string
 	From          string
@@ -384,7 +384,7 @@ type ResponseMap struct {
 	Section       string    `json:"-"`
 	MapItems      []MapItem `json:"mapItems"`
 	HideNavFooter bool      `json:"-"`
-	TileServer    string    `json:"-"`
+	TileServer    string    `json:"tileServer"`
 	Meta          Meta      `json:"-"`
 }
 

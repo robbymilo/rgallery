@@ -1,11 +1,11 @@
-<div class="max-w-6xl py-4 mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-6">
+<div class="mx-auto grid max-w-6xl grid-cols-1 gap-6 py-4 sm:grid-cols-2 md:grid-cols-2">
   {{ range (site.GetPage "/docs/install").Pages }}
     <a
       href="{{ .RelPermalink }}"
-      class="bg-white rounded-2xl shadow-md p-6 flex flex-col items-center hover:shadow-xl transition"
+      class="flex flex-col items-center rounded-2xl bg-white p-6 shadow-md transition hover:shadow-xl"
     >
-      <img src="{{ .Params.logo }}" alt="{{ .LinkTitle }}" class="h-16 mb-4 object-contain" width="121" height="96" />
-      <div class="text-xl font-semibold m-0 text-center">{{ .LinkTitle }}</div>
+      <img src="{{ .Params.logo }}" alt="{{ .LinkTitle }}" class="mb-4 h-16 object-contain" width="121" height="96" />
+      <div class="m-0 text-center text-xl font-semibold">{{ .LinkTitle }}</div>
     </a>
   {{ end }}
 </div>

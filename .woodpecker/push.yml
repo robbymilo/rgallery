@@ -1,10 +1,19 @@
 steps:
   - name: prettier
-    image: node:20.18.3-alpine3.21
+    image: node:24.12.0-alpine3.22
     commands:
       - apk add make
-      - npm i -g prettier@3.6.2
+      - npm ci
       - make npm prettier-test
+
+  - name: typecheck
+    image: node:24.12.0-alpine3.22
+    environment:
+      SHA: ${CI_COMMIT_SHA:0:7}
+    commands:
+      - apk add make
+      - make sha
+      - make typecheck
 
   - name: lint
     image: golang:1.24.0-alpine3.21
@@ -30,7 +39,7 @@ steps:
       - prettier
 
   - name: build-assets
-    image: node:20.18.3-alpine3.21
+    image: node:24.12.0-alpine3.22
     commands:
       - apk add make
       - npm ci

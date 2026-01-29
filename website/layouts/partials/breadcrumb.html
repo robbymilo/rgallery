@@ -1,11 +1,11 @@
 <nav class="flex" aria-label="Breadcrumb">
-  <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse list-none p-0">
+  <ol class="inline-flex list-none items-center space-x-1 p-0 md:space-x-2 rtl:space-x-reverse">
     {{ range $i, $e := .Ancestors.Reverse }}
       <li>
         <div class="flex items-center">
           {{ if gt $i 0 }}
             <svg
-              class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1"
+              class="mx-1 h-3 w-3 text-gray-400 rtl:rotate-180"
               aria-hidden="true"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -22,10 +22,10 @@
           {{ end }}
 
           {{ with $e }}
-            <a href="{{ .RelPermalink }}" class="ms-1 text-sm font-medium flex items-center">
+            <a href="{{ .RelPermalink }}" class="ms-1 flex items-center text-sm font-medium">
               {{ if eq $i 0 }}
                 <svg
-                  class="w-3 h-3"
+                  class="h-3 w-3"
                   aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="currentColor"
@@ -46,7 +46,7 @@
     <li aria-current="page">
       <div class="flex items-center">
         <svg
-          class="rtl:rotate-180 w-3 h-3 text-gray-400 mx-1"
+          class="mx-1 h-3 w-3 text-gray-400 rtl:rotate-180"
           aria-hidden="true"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -60,7 +60,7 @@
             d="m1 9 4-4-4-4"
           />
         </svg>
-        <span aria-current="page" class="ms-1 text-sm font-medium ">{{ or .Params.MenuTitle .LinkTitle }}</span>
+        <span aria-current="page" class="ms-1 text-sm font-medium">{{ or .Params.MenuTitle .LinkTitle }}</span>
       </div>
     </li>
   </ol>

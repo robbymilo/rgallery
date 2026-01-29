@@ -20,7 +20,7 @@ module:
       target: assets/docker-compose.yml
     - source: ../docker-compose-scalable.yml
       target: assets/docker-compose-scalable.yml
-    - source: ../pkg/static/logo.svg
+    - source: ../ui/svg/logo.svg
       target: assets/logo.svg
     - source: ../pkg/fonts # for main.css
       target: assets/css/fonts

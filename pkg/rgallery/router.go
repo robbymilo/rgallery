@@ -53,15 +53,29 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 	r.Handle("/favicon.ico", http.FileServer(http.FS(staticRoot)))
 
 	// thumbnails
-	r.Route("/img", func(r chi.Router) {
+	r.Route("/api/img", func(r chi.Router) {
 		r.Use(middleware.Auth(c))
 		r.Get("/{hash}/{size}", server.ServeThumbnail)
 	})
 
-	r.Route("/transcode", func(r chi.Router) {
+	r.Route("/api/transcode", func(r chi.Router) {
 		r.Use(middleware.Auth(c))
 		r.Use(middleware.Logger(c))
 		r.Get("/{hash}/{file}", server.ServeTranscode)
+	})
+
+	// route spa files
+	r.Route("/", func(r chi.Router) {
+		r.Use(chiMiddleware.Compress(5))
+		r.Use(middleware.Config(c))
+
+		spaFS, err := fs.Sub(dist.DistDir, "spa")
+		if err != nil {
+			c.Logger.Error("error embedding spa dir", "error", err)
+		}
+
+		// catch all route
+		r.Get("/*", SpaHandler(spaFS, c))
 	})
 
 	r.Route("/dist", func(r chi.Router) {
@@ -75,14 +89,14 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 			// embed files
 			distRoot, err := fs.Sub(dist.DistDir, ".")
 			if err != nil {
-				c.Logger.Error("error embeding dist dir", "error", err)
+				c.Logger.Error("error embedding dist dir", "error", err)
 			}
 
 			r.Handle("/*", Dist(http.StripPrefix("/dist/", http.FileServer(http.FS(distRoot))), c))
 		}
 	})
 
-	r.Route("/", func(r chi.Router) {
+	r.Route("/api", func(r chi.Router) {
 		r.Use(chiMiddleware.Compress(5))
 		r.Use(middleware.Config(c))
 		r.Use(middleware.Cache(cache))
@@ -92,7 +106,7 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 		// load originals from system
 		r.Handle("/media-originals/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Strip the prefix
-			path := strings.TrimPrefix(r.URL.Path, "/media-originals/")
+			path := strings.TrimPrefix(r.URL.Path, "/api/media-originals/")
 
 			// Validate the path to prevent directory traversal
 			if strings.Contains(path, "..") || strings.Contains(path, "//") {
@@ -101,17 +115,15 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 			}
 
 			// Serve the file
-			http.StripPrefix("/media-originals/", http.FileServer(http.Dir(config.MediaPath(c)))).ServeHTTP(w, r)
+			http.StripPrefix("/api/media-originals/", http.FileServer(http.Dir(config.MediaPath(c)))).ServeHTTP(w, r)
 		}))
 
 		r.Get("/404", server.Send404)
 
-		r.Get("/", server.ServeTimeline)
-		r.Get("/onthisday", server.ServeOnThisDay)
+		r.Get("/timeline", server.ServeTimeline)
+		r.Get("/memories", server.ServeMemories)
 
 		r.Get("/media/{hash}", server.ServeMedia)
-		r.Get("/media/{hash}/in/{collection}", server.ServeMedia)         // for favorites
-		r.Get("/media/{hash}/in/{collection}/{slug}*", server.ServeMedia) // for folders and tags
 
 		r.Get("/folders", server.ServeFolders)
 		r.Get("/folder*", server.ServeFolder)
@@ -130,44 +142,40 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 			server.ServeTiles(w, r, c)
 		})
 
+		r.Get("/profile", func(w http.ResponseWriter, r *http.Request) {
+			server.ServeProfile(w, r, c)
+		})
+
 		r.NotFound(server.NotFound)
 		r.MethodNotAllowed(server.NotAllowed)
 
 		// scan only new/modified items
 		r.Get("/scan", func(w http.ResponseWriter, r *http.Request) {
-			server.Scan(w, r, "default", cache)
+			server.Scan(w, r, cache)
 		})
 
-		// remove and add all items
-		// recreate thumbnails
-		r.Get("/deepscan", func(w http.ResponseWriter, r *http.Request) {
-			server.Scan(w, r, "deep", cache)
+		// cancel running scan
+		r.Post("/scan/cancel", func(w http.ResponseWriter, r *http.Request) {
+			server.CancelScanHandler(w, r)
 		})
 
-		// remove and add all items
-		// do not recreate thumbnails
-		r.Get("/metadatascan", func(w http.ResponseWriter, r *http.Request) {
-			server.Scan(w, r, "metadata", cache)
+		r.Get("/notifications", func(w http.ResponseWriter, r *http.Request) {
+			server.ServeNotifications(w, r)
+		})
+		r.Patch("/notifications/{id}", func(w http.ResponseWriter, r *http.Request) {
+			server.MarkNotificationRead(w, r, c)
+		})
+		r.Post("/notifications/clear", func(w http.ResponseWriter, r *http.Request) {
+			server.ClearAllNotifications(w, r, c)
 		})
 
-		// check for missing thumbnails and generate missing ones
-		// ignores the pregenerate-thumbs flag
-		r.Get("/thumbscan", func(w http.ResponseWriter, r *http.Request) {
-			server.ThumbScan(w, r)
+		r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
+			server.ServeWebSocket(w, r, c)
 		})
 
-		r.Get("/poll", server.ServePoll)
-		r.Get("/status", func(w http.ResponseWriter, r *http.Request) {
-			server.ServeStatus(w, r, c)
-		})
-
-		if !c.DisableAuth {
-			r.Get("/adduser", server.ServeAddUser)
-			r.Get("/logout", server.ServeLogOut)
-			r.Post("/admin/keys/create", server.CreateKey)
-			r.Post("/admin/keys/delete", server.RemoveKey)
-
-		}
+		r.Post("/logout", server.ServeLogOut)
+		r.Post("/keys/create", server.CreateKey)
+		r.Post("/keys/delete", server.RemoveKey)
 
 	})
 
@@ -179,20 +187,17 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 	})
 
 	if !c.DisableAuth {
-		r.Get("/signin", server.ServeSignIn)
-		r.Post("/signin", func(w http.ResponseWriter, r *http.Request) {
+		r.Post("/api/signin", func(w http.ResponseWriter, r *http.Request) {
 			err := server.SignIn(w, r, c)
 			if err != nil {
 				c.Logger.Error("error on signin route", "error", err)
 				w.WriteHeader(http.StatusInternalServerError)
-				_, err := w.Write([]byte("503\n"))
 				if err != nil {
 					c.Logger.Error("error writing 500 status for signin route", "error", err)
 				}
 			}
 		})
-		r.Post("/signup", server.SignUp)
-
+		r.Post("/api/user/add", server.SignUp)
 	}
 
 	if c.ResizeService != "" {

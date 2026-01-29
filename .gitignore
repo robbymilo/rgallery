@@ -17,9 +17,15 @@ testdata/data/sqlite.db
 commit.txt
 pkg/dist/styles
 pkg/dist/js
+pkg/dist/spa
+pkg/dist/client
 testdata/data/sqlite*
 /media*
 /packages
 /website/data/versions.yml
 .js-config
 .env
+react/dist
+.react-router
+build
+ui/version.json

@@ -103,7 +103,7 @@ func SetupApp(Commit, Tag string) {
 			Name:    "tile-server",
 			Usage:   "URL for GeoServer tiles in XYZ format, ex https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=your-api-key-here.",
 			EnvVars: []string{"RGALLERY_TILE_SERVER"},
-			Value:   "/tiles/{z}/{x}/{y}.png",
+			Value:   "/api/tiles/{z}/{x}/{y}.png",
 		},
 		&cli.IntFlag{
 			Name:    "session-length",
@@ -137,7 +137,7 @@ func SetupApp(Commit, Tag string) {
 			scanner.SetScanInProgress(false)
 
 			if c.Dev {
-				go esbuild(c)
+				// go esbuild(c)
 			}
 
 			// initialize cache

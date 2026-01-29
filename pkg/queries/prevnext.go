@@ -13,7 +13,7 @@ import (
 )
 
 // GetNext returns the media items after the current media item in chronological order.
-func GetNext(date time.Time, hash uint32, collection, key string, rating, total int, params FilterParams, previous []PrevNext, c Conf) ([]PrevNext, error) {
+func GetNext(date time.Time, hash uint32, total int, params FilterParams, previous []PrevNext, c Conf) ([]PrevNext, error) {
 	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
 		Flags:    sqlite.OpenReadOnly,
 		PoolSize: 1,
@@ -89,14 +89,14 @@ func GetNext(date time.Time, hash uint32, collection, key string, rating, total 
 
 	firstJoin := ""
 	secondJoin := ""
-	if collection == "tag" {
+	if params.Subject != "" {
 		firstJoin =
 			`JOIN
 				images_tags i_t ON i.hash = i_t.image_id
 			JOIN
 				tags t ON i_t.tag_id = t.id`
 		secondJoin = `AND t.key =?`
-	} else if collection == "folder" {
+	} else if params.Folder != "" {
 		firstJoin =
 			`JOIN
 			folders f ON f.key = i.folder`
@@ -149,7 +149,7 @@ func GetNext(date time.Time, hash uint32, collection, key string, rating, total 
 	}
 	stmt.BindInt64(paramIdx, int64(hash))
 	paramIdx++
-	stmt.BindInt64(paramIdx, int64(rating))
+	stmt.BindInt64(paramIdx, int64(params.Rating))
 	paramIdx++
 	stmt.BindText(paramIdx, date.Format("2006-01-02T15:04:05.000Z"))
 	paramIdx++
@@ -159,7 +159,16 @@ func GetNext(date time.Time, hash uint32, collection, key string, rating, total 
 	paramIdx++
 
 	if secondJoin != "" {
-		stmt.BindText(paramIdx, key)
+		if params.Subject != "" {
+			stmt.BindText(paramIdx, params.Subject)
+		} else if params.Folder != "" {
+			stmt.BindText(paramIdx, params.Folder)
+		}
+		paramIdx++
+	}
+
+	if params.Folder != "" {
+		stmt.BindText(paramIdx, params.Folder)
 		paramIdx++
 	}
 
@@ -207,15 +216,6 @@ func GetNext(date time.Time, hash uint32, collection, key string, rating, total 
 		stmt.BindFloat(paramIdx, focallength35)
 		paramIdx++
 	}
-	if params.Folder != "" {
-		stmt.BindText(paramIdx, params.Folder)
-		paramIdx++
-	}
-
-	if params.Subject != "" {
-		stmt.BindText(paramIdx, params.Subject)
-		paramIdx++ //nolint:all
-	}
 
 	next := make([]PrevNext, 0)
 	for {
@@ -251,7 +251,7 @@ func GetNext(date time.Time, hash uint32, collection, key string, rating, total 
 }
 
 // GetPrevious returns the media items before the current media item in chronological order.
-func GetPrevious(date time.Time, hash uint32, collection, key string, rating int, params FilterParams, c Conf) ([]PrevNext, error) {
+func GetPrevious(date time.Time, hash uint32, params FilterParams, c Conf) ([]PrevNext, error) {
 	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
 		Flags:    sqlite.OpenReadOnly,
 		PoolSize: 1,
@@ -327,14 +327,14 @@ func GetPrevious(date time.Time, hash uint32, collection, key string, rating int
 
 	firstJoin := ""
 	secondJoin := ""
-	if collection == "tag" {
+	if params.Subject != "" {
 		firstJoin =
 			`JOIN
 				images_tags i_t ON i.hash = i_t.image_id
 			JOIN
 				tags t ON i_t.tag_id = t.id`
 		secondJoin = `AND t.key =?`
-	} else if collection == "folder" {
+	} else if params.Folder != "" {
 		firstJoin =
 			`JOIN
 			folders f ON f.key = i.folder`
@@ -392,11 +392,15 @@ func GetPrevious(date time.Time, hash uint32, collection, key string, rating int
 
 	paramIdx++
 	if secondJoin != "" {
-		stmt.BindText(paramIdx, key)
+		if params.Subject != "" {
+			stmt.BindText(paramIdx, params.Subject)
+		} else if params.Folder != "" {
+			stmt.BindText(paramIdx, params.Folder)
+		}
 		paramIdx++
 	}
 
-	stmt.BindInt64(paramIdx, int64(rating))
+	stmt.BindInt64(paramIdx, int64(params.Rating))
 	paramIdx++
 	stmt.BindText(paramIdx, date.Format("2006-01-02T15:04:05.000Z"))
 	paramIdx++
@@ -404,6 +408,11 @@ func GetPrevious(date time.Time, hash uint32, collection, key string, rating int
 	paramIdx++
 	stmt.BindText(paramIdx, date.Format("0001-01-01T00:00:00.000Z"))
 	paramIdx++
+
+	if params.Folder != "" {
+		stmt.BindText(paramIdx, params.Folder)
+		paramIdx++
+	}
 
 	if camera != "" {
 		stmt.BindText(paramIdx, params.Camera)
@@ -448,15 +457,6 @@ func GetPrevious(date time.Time, hash uint32, collection, key string, rating int
 	if focallength35 != 0 {
 		stmt.BindFloat(paramIdx, focallength35)
 		paramIdx++
-	}
-	if params.Folder != "" {
-		stmt.BindText(paramIdx, params.Folder)
-		paramIdx++
-	}
-
-	if params.Subject != "" {
-		stmt.BindText(paramIdx, params.Subject)
-		paramIdx++ //nolint:all
 	}
 
 	previous := make([]PrevNext, 0)

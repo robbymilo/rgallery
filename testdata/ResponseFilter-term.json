@@ -1,37 +1,22 @@
 {
-  "segment": [
+  "meta": {
+    "total": 1,
+    "pagesize": 1000,
+    "nextCursor": ""
+  },
+  "timeline": [
     {
-      "sectionId": "2019-03",
-      "totalItems": 1,
-      "segments": [
-        {
-          "s": "2019-03-30",
-          "i": [
-            [
-              3000,
-              2003,
-              3455659031,
-              "#999EA2"
-            ]
-          ]
-        }
-      ]
+      "date": "2019-03-30",
+      "count": 1
     }
   ],
-  "total": 1,
-  "pagesize": -1,
-  "page": 1,
-  "orderby": "date",
-  "direction": "desc",
-  "filter": {
-    "camera": "",
-    "lens": "",
-    "term": "copp",
-    "type": "",
-    "rating": 0,
-    "subject": "",
-    "folder": "",
-    "software": "",
-    "focalLength35": 0
-  }
+  "photos": [
+    {
+      "id": 3455659031,
+      "w": 3000,
+      "h": 2003,
+      "c": "#999EA2",
+      "d": "2019-03-30"
+    }
+  ]
 }

@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 
-	"github.com/robbymilo/rgallery/pkg/render"
 	"github.com/robbymilo/rgallery/pkg/users"
 )
 
@@ -15,34 +13,25 @@ func CreateKey(w http.ResponseWriter, r *http.Request) {
 	params := r.Context().Value(ParamsKey{}).(FilterParams)
 	c := r.Context().Value(ConfigKey{}).(Conf)
 
-	// get signin as JSON
 	creds := &ApiCredentials{}
 	if params.Json {
-		err := json.NewDecoder(r.Body).Decode(creds)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(creds); err != nil {
 			c.Logger.Error("error decoding json", "error", err)
-
-			w.WriteHeader(http.StatusBadRequest)
-			_, err := w.Write([]byte("400\n"))
-			if err != nil {
-				c.Logger.Error("error writing 400 response", "error", err)
-			}
-
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
 		}
 	} else {
-		err := r.ParseForm()
-		if err != nil {
+		if err := r.ParseForm(); err != nil {
 			c.Logger.Error("error parsing form", "error", err)
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
 		}
-		creds.Name = r.Form["name"][0]
+		if r.Form.Get("name") == "" {
+			http.Error(w, "Missing required field: name", http.StatusBadRequest)
+			return
+		}
+		creds.Name = r.Form.Get("name")
 	}
-
-	// create error URL
-	errorUrl, _ := url.Parse("/admin")
-	errorParams := url.Values{}
-	errorParams.Add("error", "true")
-	errorUrl.RawQuery = errorParams.Encode()
 
 	var user UserKey
 	if r.Context().Value(UserKey{}) != nil {
@@ -51,54 +40,28 @@ func CreateKey(w http.ResponseWriter, r *http.Request) {
 
 	if user.UserRole == "viewer" {
 		c.Logger.Error("error adding key", "error", fmt.Errorf("api key cannot be added by viewers"))
-		http.Redirect(w, r, errorUrl.String(), http.StatusFound)
+		http.Error(w, "Permission denied", http.StatusForbidden)
 		return
 	}
 
 	key, err := users.AddKey(creds, c)
 	if err != nil {
 		c.Logger.Error("error adding key", "error", err)
-		http.Redirect(w, r, errorUrl.String(), http.StatusFound)
+		http.Error(w, "Error adding key", http.StatusInternalServerError)
 		return
 	}
-
-	// key added
-	var credentials ApiCredentials
-	credentials.Name = creds.Name
-	credentials.Key = key
 
 	c.Logger.Info("api key added: " + creds.Name)
 
-	// show the created API key once
-	keys, err := users.GetKeyNames(c)
-	if err != nil {
-		c.Logger.Error("error listing keys", "error", err)
-		http.Redirect(w, r, errorUrl.String(), http.StatusFound)
-		return
+	resp := struct {
+		Key string `json:"key"`
+	}{
+		Key: key,
 	}
-
-	users, err := users.ListUsers(c)
-	if err != nil {
-		c.Logger.Error("error listing users", "error", err)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		c.Logger.Error("error writing success response", "error", err)
 	}
-
-	// needed to show the API key once
-	response := ResponseAdmin{
-		HideNavFooter: false,
-		HideAuth:      c.DisableAuth,
-		Section:       "admin",
-		Key:           credentials,
-		Keys:          keys,
-		Users:         users,
-		UserName:      user.UserName,
-		UserRole:      user.UserRole,
-		Meta:          c.Meta,
-	}
-	err = render.Render(w, r, response, "admin")
-	if err != nil {
-		c.Logger.Error("error rendering admin create key response", "error", err)
-	}
-
 }
 
 // RemoveKey handles a post request to remove an API key.
@@ -106,37 +69,34 @@ func RemoveKey(w http.ResponseWriter, r *http.Request) {
 	params := r.Context().Value(ParamsKey{}).(FilterParams)
 	c := r.Context().Value(ConfigKey{}).(Conf)
 
-	// get signin as JSON
 	creds := &ApiCredentials{}
 	if params.Json {
-		err := json.NewDecoder(r.Body).Decode(creds)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(creds); err != nil {
 			c.Logger.Error("error decoding json", "error", err)
-
-			w.WriteHeader(http.StatusBadRequest)
-			_, err := w.Write([]byte("400\n"))
-			if err != nil {
-				c.Logger.Error("error writing 400 response", "error", err)
-			}
-
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
 		}
 	} else {
-		err := r.ParseForm()
-		if err != nil {
+		if err := r.ParseForm(); err != nil {
 			c.Logger.Error("error parsing form", "error", err)
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			return
 		}
-		creds.Name = r.Form["name"][0]
+		if r.Form.Get("name") == "" {
+			http.Error(w, "Missing required field: name", http.StatusBadRequest)
+			return
+		}
+		creds.Name = r.Form.Get("name")
 	}
 
-	err := users.RemoveKey(creds, c)
-	if err != nil {
+	if err := users.RemoveKey(creds, c); err != nil {
 		c.Logger.Error("error removing key", "error", err)
+		http.Error(w, "Error removing key", http.StatusInternalServerError)
 		return
 	}
 
 	c.Logger.Info("api key removed: " + creds.Name)
-
-	http.Redirect(w, r, "/admin", http.StatusFound)
-
+	if _, err := w.Write([]byte("Success\n")); err != nil {
+		c.Logger.Error("error writing success response", "error", err)
+	}
 }

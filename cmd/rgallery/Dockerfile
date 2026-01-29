@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:20.18.3-alpine3.21 AS frontend
+FROM --platform=$BUILDPLATFORM node:24.12.0-alpine3.22 AS frontend
 ARG ARCH TARGETOS TARGETARCH
 
 RUN apk add --no-cache make git

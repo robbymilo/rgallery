@@ -1,4 +1,4 @@
-FROM node:20.18.3-alpine
+FROM node:24.12.0-alpine
 
 RUN apk update && apk add --no-cache curl git tar make bash gcompat libc6-compat
 
