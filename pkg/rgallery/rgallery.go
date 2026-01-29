@@ -135,10 +135,6 @@ func SetupApp(Commit, Tag string) {
 
 			scanner.SetScanInProgress(false)
 
-			if c.Dev {
-				// go esbuild(c)
-			}
-
 			// initialize cache
 			cache := cache.New(-1, -1)
 
@@ -306,5 +302,3 @@ func SetupApp(Commit, Tag string) {
 	}
 
 }
-
-

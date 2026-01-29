@@ -121,7 +121,8 @@ func GetThumbFromResizeService(media Media, size int, c Conf) ([]byte, error) {
 
 		var res *http.Response
 
-		if media.Type == "image" {
+		switch media.Type {
+		case "image":
 			res, err = uploadFileMultipart(url, path)
 			if err != nil {
 				return nil, fmt.Errorf("error requesting image from resize service: %v", err)
@@ -131,12 +132,11 @@ func GetThumbFromResizeService(media Media, size int, c Conf) ([]byte, error) {
 					c.Logger.Error("res.Body.Close error:", "err", err)
 				}
 			}()
-		} else if media.Type == "video" {
+		case "video":
 			file, err := CreateVideoThumb(path)
 			if err != nil {
 				return nil, fmt.Errorf("error getting video thumb from video: %v", err)
 			}
-
 			res, err = uploadReaderFileMultipart(url, path, file)
 			if err != nil {
 				return nil, fmt.Errorf("error requesting video thumb from resize service: %v", err)

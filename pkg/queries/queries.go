@@ -1,9 +1,8 @@
 package queries
 
-
 import (
-    "context"
-    "fmt"
+	"context"
+	"fmt"
 
 	"github.com/robbymilo/rgallery/pkg/database"
 	"github.com/robbymilo/rgallery/pkg/types"
@@ -30,7 +29,11 @@ func GetTotalMediaItems(rating int, from, to, camera, lens string, c Conf) (int,
 	if err != nil {
 		return 0, fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("error closing pool", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {
@@ -65,5 +68,3 @@ func GetTotalMediaItems(rating int, from, to, camera, lens string, c Conf) (int,
 
 	return total, nil
 }
-
-

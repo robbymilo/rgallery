@@ -28,7 +28,11 @@ func AddUser(creds UserCredentials, c Conf) error {
 	if err != nil {
 		return fmt.Errorf("error opening sqlite db: %w", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 
 	// check for existing username
 	stmt, err := conn.Prepare("SELECT 1 FROM users WHERE username = ?")

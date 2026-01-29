@@ -76,7 +76,8 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 	var color string
 	var rotation float64
 
-	if mediatype == "image" {
+	switch mediatype {
+	case "image":
 		// need to open separately from exiftool to get correct orientation
 		img, err = resize.DecodeImage(absolute_path)
 		if err != nil {
@@ -97,7 +98,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 			}
 		}
 
-	} else if mediatype == "video" {
+	case "video":
 		for _, fileInfo := range exif {
 
 			if fileInfo.Fields["Rotation"] != nil {
@@ -465,7 +466,7 @@ func stringToDate(date_string string) (time.Time, error) {
 
 	// If the numeric string length isn't one of the expected lengths,
 	// prefer the YYYYMMDD date-only form by truncating to 8 digits.
-	if !(len(time_string) == 8 || len(time_string) == 10 || len(time_string) == 12 || len(time_string) == 14) {
+	if len(time_string) != 8 && len(time_string) != 10 && len(time_string) != 12 && len(time_string) != 14 {
 		if len(time_string) > 8 {
 			time_string = time_string[:8]
 		}

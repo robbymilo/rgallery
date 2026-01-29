@@ -35,17 +35,18 @@ func GenerateSingleThumb(path string, media Media, size int, c Conf) ([]byte, er
 	}
 
 	if validSize {
-		if media.Type == "video" {
+		switch media.Type {
+		case "video":
 			file, err = CreateSaveVideoThumb(path, media, size, c)
 			if err != nil {
 				return nil, fmt.Errorf("error creating and saving video thumb: %v", err)
 			}
-		} else if media.Type == "image" {
+		case "image":
 			file, err = CreateSaveImageThumb(path, media, size, c)
 			if err != nil {
 				return nil, fmt.Errorf("error creating and saving image thumb: %v", err)
 			}
-		} else {
+		default:
 			return nil, fmt.Errorf("file is not a video or image")
 		}
 	} else {

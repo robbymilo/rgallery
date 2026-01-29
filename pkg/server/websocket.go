@@ -23,7 +23,11 @@ func ServeWebSocket(w http.ResponseWriter, r *http.Request, c Conf) {
 		c.Logger.Error("failed to accept websocket", "error", err)
 		return
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "connection closed")
+	defer func() {
+		if err := conn.Close(websocket.StatusNormalClosure, "connection closed"); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 
 	// Get user from context
 	userKey := r.Context().Value(types.UserKey{})

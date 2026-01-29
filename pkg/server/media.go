@@ -60,5 +60,3 @@ func ServeMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-
-

@@ -47,7 +47,7 @@ func Static(h http.Handler, c Conf) http.Handler {
 			return
 		}
 
-		e := render.GenerateEtag(fmt.Sprint(content))
+		e := render.GenerateEtag(string(content))
 		w.Header().Set("Etag", fmt.Sprintf("\"%s\"", e))
 		w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 
@@ -66,7 +66,7 @@ func Fonts(h http.Handler, c Conf) http.Handler {
 			return
 		}
 
-		e := render.GenerateEtag(fmt.Sprint(content))
+		e := render.GenerateEtag(string(content))
 		w.Header().Set("Etag", fmt.Sprintf("\"%s\"", e))
 		w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 

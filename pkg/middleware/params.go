@@ -49,7 +49,7 @@ func Params(c Conf) func(http.Handler) http.Handler {
 				direction = strings.ToLower(r.URL.Query().Get("direction"))
 			}
 
-			if !(direction == "asc" || direction == "desc") {
+			if direction != "asc" && direction != "desc" {
 				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 				return
 			}
