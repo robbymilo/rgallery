@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"time"
 	_ "time/tzdata"
 
@@ -308,14 +307,4 @@ func SetupApp(Commit, Tag string) {
 
 }
 
-// esbuild bundles js and scss via esbuild in the background
-func esbuild(c Conf) {
-	c.Logger.Info("running esbuild")
 
-	cmd := exec.Command("node", "assets/esbuild-dev.config.mjs")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		log.Println("ERROR Running esbuild", err)
-	}
-}

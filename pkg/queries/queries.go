@@ -1,9 +1,9 @@
 package queries
 
+
 import (
-	"context"
-	"fmt"
-	"time"
+    "context"
+    "fmt"
 
 	"github.com/robbymilo/rgallery/pkg/database"
 	"github.com/robbymilo/rgallery/pkg/types"
@@ -66,19 +66,4 @@ func GetTotalMediaItems(rating int, from, to, camera, lens string, c Conf) (int,
 	return total, nil
 }
 
-// getTimeLocal takes a UTC time and offset and returns a local date
-func getTimeLocal(dateString string, offset float64) (time.Time, error) {
 
-	// Parse UTC timestamp
-	t, err := time.Parse(time.RFC3339, dateString)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	offsetDuration := time.Duration(offset/60)*time.Hour + time.Duration(offset/60)*time.Minute
-
-	// Add offset to UTC time
-	localTime := t.Add(offsetDuration)
-
-	return localTime, nil
-}

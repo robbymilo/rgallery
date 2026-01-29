@@ -61,23 +61,4 @@ func ServeMedia(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getAfter5thSlash(s string) string {
-	index := -1
-	slashCount := 0
 
-	for i, c := range s {
-		if c == '/' {
-			slashCount++
-			if slashCount == 5 {
-				index = i
-				break
-			}
-		}
-	}
-
-	if index == -1 || index+1 >= len(s) {
-		return "" // Less than 5 slashes or nothing after
-	}
-
-	return s[index+1:]
-}
