@@ -257,6 +257,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isTimelineRoute = location.pathname === '/';
   const contentOverflowClass = isTimelineRoute ? 'overflow-hidden' : 'overflow-auto';
 
+  const handleTimelineClick = (e: React.MouseEvent<HTMLAnchorElement>, callback?: () => void) => {
+    if (location.pathname === '/' || location.pathname === '') {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('scroll-to-top'));
+    }
+    if (callback) callback();
+  };
+
   return (
     <div className="bg-charcoal-900 relative flex min-h-screen flex-col transition-colors duration-300">
       {/* Navbar */}
@@ -274,7 +282,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="mx-auto h-full w-[90vw] md:w-[80vw]">
           <div className="flex h-full items-center justify-between">
             <div className="flex h-[25px] w-[100px] shrink-0 items-center justify-start">
-              <Link to="/" className="group flex h-full w-full items-center text-gray-100">
+              <Link
+                to="/"
+                onClick={(e) => handleTimelineClick(e)}
+                className="group flex h-full w-full items-center text-gray-100"
+              >
                 <Logo />
               </Link>
             </div>
@@ -282,7 +294,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <div className="ml-auto flex items-center">
               {/* desktop */}
               <nav className="hidden space-x-1 md:flex">
-                <Link to="/" className={`nav-link ${isActive('/') ? 'nav-link-active' : ''}`}>
+                <Link
+                  to="/"
+                  onClick={(e) => handleTimelineClick(e)}
+                  className={`nav-link ${isActive('/') ? 'nav-link-active' : ''}`}
+                >
                   <Timeline className="h-3.5 w-3.5" />
                   Timeline
                 </Link>
@@ -439,7 +455,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {isMobileMenuOpen && (
           <div className="animate-fade-in border-charcoal-800 bg-charcoal-900 absolute top-10 left-0 z-50 h-[calc(100vh-40px)] w-full overflow-y-auto border-t shadow-xl md:hidden">
             <div className="mx-auto w-[90vw] space-y-1 py-3">
-              <Link to="/" className={`mobile-nav-link ${isActive('/') ? 'mobile-nav-link-active' : ''}`}>
+              <Link
+                to="/"
+                onClick={(e) => handleTimelineClick(e, () => setIsMobileMenuOpen(false))}
+                className={`mobile-nav-link ${isActive('/') ? 'mobile-nav-link-active' : ''}`}
+              >
                 <Timeline className="h-5 w-5" />
                 Timeline
               </Link>

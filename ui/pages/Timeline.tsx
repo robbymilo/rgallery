@@ -471,7 +471,7 @@ const App: React.FC = () => {
     jumpToDate(date, false);
   };
 
-  const handleScrollToTop = () => {
+  const handleScrollToTop = useCallback(() => {
     if (timeline.length === 0) return;
     const firstDate = new Date(timeline[0].date);
     if (minOffset === 0) {
@@ -480,7 +480,13 @@ const App: React.FC = () => {
     } else {
       handleDateSelect(firstDate);
     }
-  };
+  }, [timeline, minOffset, handleDateSelect]);
+
+  useEffect(() => {
+    const onScrollTop = () => handleScrollToTop();
+    window.addEventListener('scroll-to-top', onScrollTop);
+    return () => window.removeEventListener('scroll-to-top', onScrollTop);
+  }, [handleScrollToTop]);
 
   const handleVisibleDateChange = (date: Date) => {
     if (!isScrubbingLoopActiveRef.current) {
