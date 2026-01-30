@@ -513,7 +513,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
       </button>
       {isLoading && (
         <div className="pointer-events-none fixed right-0 bottom-8 left-0 z-50 flex justify-center py-4">
-          <div className="border-primary-500 border-t-charcoal-200 h-8 w-8 animate-spin rounded-full border-4"></div>
+          <div className="border-charcoal-400 border-t-charcoal-200 h-8 w-8 animate-spin rounded-full border-4"></div>
         </div>
       )}
     </>
