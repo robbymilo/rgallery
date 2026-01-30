@@ -74,6 +74,7 @@ const App: React.FC = () => {
       date: new Date(p.d),
       type: p.t === 'video' ? 'video' : 'image',
       color: p.c,
+      path: p.path,
     }));
   }, []);
 

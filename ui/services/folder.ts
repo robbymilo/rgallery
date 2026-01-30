@@ -38,7 +38,10 @@ function mapToFolder(child: RawFolder): Folder {
     id: child.path,
     name: child.name || child.path.split('/').pop() || child.path,
     itemCount: child.imageCount || child.total || 0,
-    previewImages: (child.media || []).slice(0, 5).map((m: RawMedia) => `/api/img/${m.hash}/400`),
+    previewImages: (child.media || []).slice(0, 5).map((m: RawMedia) => ({
+      url: `/api/img/${m.hash}/400`,
+      path: m.path,
+    })),
     folders: (child.children || child.folders || []).map(mapToFolder),
     files: (child.media || []).map(mapToMediaItem),
   };

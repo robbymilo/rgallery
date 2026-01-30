@@ -74,12 +74,12 @@ const FolderRow: React.FC<FolderRowProps> = ({ folder }) => {
 
             {folder.previewImages && folder.previewImages.length > 0 && (
               <div className="mt-1 flex items-center gap-2">
-                {folder.previewImages.slice(0, 5).map((src, i) => (
+                {folder.previewImages.slice(0, 5).map((img, i) => (
                   <div
                     key={i}
                     className="dark:border-charcoal-700 relative h-8 w-8 overflow-hidden rounded border border-gray-100"
                   >
-                    <img src={src} alt="" className="h-full w-full object-cover" />
+                    <img src={img.url} alt={img.path} className="h-full w-full object-cover" />
                   </div>
                 ))}
                 {(() => {
@@ -131,7 +131,7 @@ const FolderRow: React.FC<FolderRowProps> = ({ folder }) => {
                       to={`/media/${file.id}`}
                       className="group relative block aspect-video overflow-hidden rounded-lg"
                     >
-                      <img src={file.thumbnailUrl} alt={file.title} className="h-full w-full object-cover" />
+                      <img src={file.thumbnailUrl} alt={file.path} className="h-full w-full object-cover" />
                     </Link>
                   ))}
                 </div>

@@ -10,12 +10,17 @@ export interface ApiKey {
   createdAt: string;
 }
 
+export interface PreviewImage {
+  url: string;
+  path: string;
+}
+
 export interface Folder {
   id: string;
   name: string;
   itemCount: number;
   path?: string;
-  previewImages?: string[];
+  previewImages?: PreviewImage[];
   folders?: Folder[];
   files?: MediaItem[];
 }
@@ -60,6 +65,7 @@ export interface Photo {
   date: Date;
   type: 'image' | 'video';
   color: string; // Placeholder color
+  path: string;
 }
 
 // API Types matching the requested JSON structure
@@ -70,6 +76,7 @@ export interface ApiPhoto {
   c: string;
   t: string;
   d: string; // "YYYY-MM-DD"
+  path: string;
 }
 
 export interface Notification {
