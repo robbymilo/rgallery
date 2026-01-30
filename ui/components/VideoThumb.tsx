@@ -8,7 +8,7 @@ interface VideoThumbProps {
 
 const VideoThumb: React.FC<VideoThumbProps> = ({ hlsUrl, poster, alt }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const hlsInstanceRef = useRef<any>(null);
+  const hlsInstanceRef = useRef<Hls | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [canShowVideo, setCanShowVideo] = useState(false);
@@ -21,7 +21,6 @@ const VideoThumb: React.FC<VideoThumbProps> = ({ hlsUrl, poster, alt }) => {
   const handleMouseEnter = () => {
     setIsHovered(true);
     if (!videoRef.current) return;
-    const Hls = (window as any).Hls;
     if (Hls && Hls.isSupported()) {
       if (!hlsInstanceRef.current) {
         const hls = new Hls({ maxBufferLength: 3, debug: false });

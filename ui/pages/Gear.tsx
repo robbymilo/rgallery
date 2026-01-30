@@ -126,7 +126,7 @@ const Gear: React.FC = () => {
         }
       } catch (err: any) {
         if (!mounted) return;
-        setError(err.message || 'Failed to load gear statistics.');
+        setError(err && err.message ? err.message : 'Failed to load gear statistics.');
       } finally {
         if (mounted) setLoading(false);
       }

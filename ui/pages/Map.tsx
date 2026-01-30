@@ -11,12 +11,12 @@ type MapItem = [number, number, number];
 
 const Map: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<any>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let map: any;
-    let markers: any;
+    let map: L.Map;
+    let markers: L.MarkerClusterGroup;
 
     fetch('/api/map')
       .then((res) => res.json())
@@ -43,8 +43,9 @@ const Map: React.FC = () => {
           leafletMapRef.current.remove();
           leafletMapRef.current = null;
         }
-        if (mapRef.current && (mapRef.current as any)._leaflet_id) {
-          delete (mapRef.current as any)._leaflet_id;
+        const mapEl = mapRef.current as unknown as { _leaflet_id?: string };
+        if (mapEl && mapEl._leaflet_id) {
+          delete mapEl._leaflet_id;
         }
 
         map = L.map(mapRef.current!, {
@@ -57,8 +58,7 @@ const Map: React.FC = () => {
         }).addTo(map);
 
         // Custom marker icon
-        const LeafIcon = L.Icon.extend({ options: {} });
-        const icon = new LeafIcon({
+        const icon = new L.Icon({
           iconUrl: '/static/marker-icon.png',
           iconRetinaUrl: '/static/marker-icon.png',
           shadowUrl: '/static/marker-shadow.png',
@@ -85,9 +85,9 @@ const Map: React.FC = () => {
 
         map.on('moveend', () => {
           const url = new URL(window.location.href);
-          url.searchParams.set('lat', map.getCenter().lat);
-          url.searchParams.set('lng', map.getCenter().lng);
-          url.searchParams.set('zoom', map.getZoom());
+          url.searchParams.set('lat', String(map.getCenter().lat));
+          url.searchParams.set('lng', String(map.getCenter().lng));
+          url.searchParams.set('zoom', String(map.getZoom()));
           history.replaceState(null, document.title, url.href);
         });
 

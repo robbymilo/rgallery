@@ -31,7 +31,7 @@ export type RawMedia = {
   width?: number;
   height?: number;
   type?: string;
-  [k: string]: any;
+  [k: string]: unknown;
 };
 
 export type RawFolder = {
@@ -42,7 +42,7 @@ export type RawFolder = {
   media?: RawMedia[];
   children?: RawFolder[];
   folders?: RawFolder[];
-  [k: string]: any;
+  [k: string]: unknown;
 };
 
 export interface AuthState {

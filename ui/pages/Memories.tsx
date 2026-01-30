@@ -32,7 +32,7 @@ const MemoryCard: React.FC<{ memory: Memory }> = ({ memory }) => {
         style={{ aspectRatio: '1 / 1' }}
       >
         {displayItems.map((item, index) => {
-          const srcset = (item as any).srcset || undefined;
+          const srcset = item.srcset || undefined;
           const hash = item.thumbnailUrl?.match(/\/(\d+)\/400$/)?.[1] ?? '';
           const isOverlay = index === displayItems.length - 1 && remainingCount > 0;
 
@@ -108,7 +108,7 @@ const Memories: React.FC = () => {
       } catch (err: any) {
         if (!mounted) return;
         console.error('Fetch error:', err);
-        setError(err.message || 'Failed to load memories.');
+        setError(err && typeof err.message === 'string' ? err.message : 'Failed to load memories.');
       } finally {
         if (mounted) setLoading(false);
       }

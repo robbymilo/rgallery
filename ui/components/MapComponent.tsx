@@ -27,8 +27,8 @@ interface MapComponentProps {
 
 const MapComponent: React.FC<MapComponentProps> = ({ lat, lng }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;

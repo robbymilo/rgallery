@@ -25,7 +25,7 @@ const FolderBrowser: React.FC = () => {
         setError(null);
       } catch (err: any) {
         console.error(err);
-        setError(err.message || 'Failed to load folders.');
+        setError(err && err.message ? err.message : 'Failed to load folders.');
       } finally {
         setLoading(false);
       }
