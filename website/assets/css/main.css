@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import 'fonts/onest.css';
+@import 'fonts/inter.css';
 @source 'hugo_stats.json';
 
 @theme {

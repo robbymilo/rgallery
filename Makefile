@@ -67,7 +67,7 @@ run-all:
 
 # run make test before to get mod time correct
 run-test: clean
-	go run $(FLAGS) ./cmd/rgallery/main.go --disable-auth --media testdata/media --cache testdata/cache --data testdata/data --config testdata/config/config.yml --on-this-day=false  TZ=$(TZ)
+	go run $(FLAGS) ./cmd/rgallery/main.go --disable-auth --media testdata/media --cache testdata/cache --data testdata/data --config testdata/config/config.yml --memories=false  TZ=$(TZ)
 
 .PHONY: test
 test: clean
@@ -97,7 +97,6 @@ server:
 typecheck:
 	npm run typecheck
 
-# temp
 vite: sha
 	cd ui && npm run dev
 

@@ -4,7 +4,7 @@
 
 ## About
 
-rgallery unifies your photo and video collection into a single, elegant web interface—complete with a timeline view, memories, favorites, folders, EXIF metadata, map view, and more. To get started, see [Deploy with Docker](#docker) or [visit the docs](https://rgallery.app/docs/) for more information.
+rgallery unifies your photo and video collection into a single, elegant web interface, complete with a timeline view, memories, favorites, folders, EXIF metadata, map view, and more. To get started, see [Deploy with Docker](#docker) or [visit the docs](https://rgallery.app/docs/) for more information.
 
 rgallery was originally designed for photographer's with highly organized photo collections, but adapts to all photo and video collections, even if they are not well organized.
 

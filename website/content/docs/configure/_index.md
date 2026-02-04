@@ -39,7 +39,7 @@ GLOBAL OPTIONS:
    --tile-server value           URL for GeoServer tiles in XYZ format, ex https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=your-api-key-here. (default: "/tiles/{z}/{x}/{y}.png") [$RGALLERY_TILE_SERVER]
    --session-length value        Length of authenticated sessions in days. (default: 30) [$RGALLERY_SESSION_LENGTH]
    --include-originals           Include original files in web view. Setting this to true may cause slower image loading performance. (default: false)
-   --on-this-day                 Show media items that occurred on the current day in previous years. (default: true)
+   --memories                    Show media items that occurred on the current day in previous years. (default: true)
    --help, -h                    show help
 ```
 

@@ -66,7 +66,7 @@ func GetConf(cCtx cli.Context, Commit, Tag string) Conf {
 	c.LocationDataset = cCtx.String("location-dataset")
 	c.IncludeOriginals = cCtx.Bool("include-originals")
 	c.Media = cCtx.String("media")
-	c.Memories = cCtx.Bool("on-this-day")
+	c.Memories = cCtx.Bool("memories")
 	c.PreGenerateThumb = cCtx.Bool("pregenerate-thumbs")
 	c.Quality = cCtx.Int("quality")
 	c.TranscodeResolution = cCtx.Int("transcode-resolution")

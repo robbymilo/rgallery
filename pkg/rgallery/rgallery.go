@@ -116,7 +116,7 @@ func SetupApp(Commit, Tag string) {
 			Value: false,
 		},
 		&cli.BoolFlag{
-			Name:  "on-this-day",
+			Name:  "memories",
 			Usage: "Show media items that occurred on the current day in previous years.",
 			Value: true,
 		},
