@@ -358,12 +358,14 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
           aria-label="Timeline scrubber"
           aria-valuetext={currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
         >
-          <div className="pointer-events-none flex w-24 min-w-max items-center justify-between gap-1.5 rounded-l-full bg-white px-3 py-1 text-black shadow-lg">
-            <span className="text-[10px] leading-none font-bold whitespace-nowrap tabular-nums">
+          <div className="pointer-events-none flex w-24 min-w-max items-center justify-between gap-1.5 rounded-l-full bg-zinc-600 px-3 py-1 text-black shadow-lg dark:bg-white">
+            <span className="text-[10px] font-bold whitespace-nowrap text-white tabular-nums dark:text-zinc-600">
               {currentDate.getFullYear()}{' '}
-              <span className="text-black">{currentDate.toLocaleString('default', { month: 'short' })}</span>
+              <span className="text-white dark:text-zinc-600">
+                {currentDate.toLocaleString('default', { month: 'short' })}
+              </span>
             </span>
-            <Scrubber className="h-3 w-3 text-black" />
+            <Scrubber className="h-3 w-3 text-white dark:text-zinc-600" />
           </div>
         </button>
       )}
