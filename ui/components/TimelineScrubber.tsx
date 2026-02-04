@@ -317,7 +317,11 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
         <div className="flex w-full flex-col items-end py-10 pr-4">
           {groups.map((group) => (
             <div key={group.year} className="relative flex w-full flex-col items-end">
-              <div className="absolute top-0 right-16 pr-4 text-[10px] leading-none font-bold text-zinc-500">
+              <div
+                className={`absolute right-8 pr-4 text-[10px] font-bold text-zinc-600 tabular-nums dark:text-zinc-400 ${
+                  group.months.length === 0 ? 'top-0' : 'top-1/2 -translate-y-1/2'
+                }`}
+              >
                 {group.year}
               </div>
               {group.months.map((m) => {
@@ -325,7 +329,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
 
                 return (
                   <div key={m.monthIndex} className="z-10 flex h-2 w-12 items-center justify-end">
-                    <div className="h-1 bg-zinc-600 transition-all" style={{ width: `${ratio}px` }} />
+                    <div className="h-1 bg-zinc-600 transition-all dark:bg-zinc-400" style={{ width: `${ratio}px` }} />
                   </div>
                 );
               })}
@@ -337,7 +341,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
 
       {thumbTop !== null && (
         <button
-          className="pointer-events-auto absolute right-0 z-20 w-auto cursor-grab transition-none focus:outline-none active:cursor-grabbing"
+          className="pointer-events-auto absolute right-0 z-20 w-24 cursor-grab transition-none focus:outline-none active:cursor-grabbing"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -354,12 +358,12 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
           aria-label="Timeline scrubber"
           aria-valuetext={currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
         >
-          <div className="pointer-events-none flex min-w-max items-center gap-1.5 rounded-l-full bg-white px-3 py-1 text-black shadow-lg">
-            <Scrubber className="h-3 w-3 text-black" />
+          <div className="pointer-events-none flex w-24 min-w-max items-center justify-between gap-1.5 rounded-l-full bg-white px-3 py-1 text-black shadow-lg">
             <span className="text-[10px] leading-none font-bold whitespace-nowrap tabular-nums">
               {currentDate.getFullYear()}{' '}
               <span className="text-black">{currentDate.toLocaleString('default', { month: 'short' })}</span>
             </span>
+            <Scrubber className="h-3 w-3 text-black" />
           </div>
         </button>
       )}

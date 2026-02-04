@@ -544,7 +544,7 @@ const App: React.FC = () => {
           />
         </div>
 
-        <div className="pointer-events-none absolute top-0 right-0 bottom-0 z-40 flex w-32 flex-col justify-center overflow-hidden">
+        <div className="pointer-events-none absolute top-0 right-0 bottom-0 z-40 flex w-24 flex-col justify-center overflow-hidden">
           <TimelineScrubber
             timeline={timeline}
             onDateSelect={handleDateSelect}
