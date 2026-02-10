@@ -18,7 +18,7 @@ features:
     content: Scroll to any date in your library, all in a single view grouped by day. Filter or search by folder, tag, camera, lens, and more.
     element: expand
     video:
-      src: https://packages.rmilo.dev/images/v0.0.4/rgallery-demo.mp4
+      src: https://packages.rmilo.dev/images/v0.0.4/rgallery-demo-1.mp4
   - title: Search
     content: Search EXIF metadata across all your images and videos.
     video:

@@ -5,7 +5,7 @@ MenuTitle: Docs
 
 # rgallery Documentation
 
-{{< image-expand src="https://packages.rmilo.dev/images/screenshots/rgallery-timeline-tall-2.png" alt="rgallery timeline" width="3000" height="1875" srcset="https://packages.rmilo.dev/images/screenshots/rgallery-timeline-tall-2-800.png 800w, https://packages.rmilo.dev/images/screenshots/rgallery-timeline-tall-2-1600.png 1600w" caption="rgallery brings together your photos and videos from every folder into one scrollable, filterable timeline." >}}
+{{< image-expand src="https://packages.rmilo.dev/images/v0.0.4/rgallery-tall-4-1600.png" alt="rgallery timeline" width="3000" height="1875" srcset="https://packages.rmilo.dev/images/v0.0.4/rgallery-tall-4-1600.png 800w, https://packages.rmilo.dev/images/v0.0.4/rgallery-tall-4-1600.png 1600w" caption="rgallery brings together your photos and videos from every folder into one scrollable, filterable timeline." >}}
 
 ## Overview
 
