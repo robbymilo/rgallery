@@ -21,9 +21,11 @@
               {{ readFile "static/external-dark.svg" | safeHTML }}
             </span></a
           >
-          (User: <strong class="font-mono">demo</strong>, Password: <strong class="font-mono">demo</strong>)
+          <a class="btn btn-white-outline inline-flex text-white" href="{{ .Params.lead.install.link }}"
+            >{{ .Params.lead.install.text }}</a
+          >
         </p>
-        <a class="inline-flex text-white" href="{{ .Params.lead.install.link }}">{{ .Params.lead.install.text }}</a>
+        <p>(User: <strong class="font-mono">demo</strong>, Password: <strong class="font-mono">demo</strong>)</p>
       </div>
       <div class="relative sm:py-8 lg:py-0">
         <div class="relative mx-auto max-w-md px-4 py-6 sm:max-w-3xl sm:px-6 lg:max-w-none lg:px-0">
