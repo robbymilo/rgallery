@@ -4,7 +4,7 @@
       <div class="grid gap-10 md:h-[400px] md:grid-cols-2 md:items-center">
         <div class="md:order-{{ if modBool $i 2 }}1{{ else }}2{{ end }} shadow-lg">
           {{ with .image }}
-            {{ partial "get-image" (dict "src" . "alt" $e.title) }}
+            {{ partial "get-image" (dict "src" . "alt" $e.title "hide_caption" true "class" "mb-0") }}
           {{ end }}
           {{ with .video }}
             <video src="/media/{{ . }}" class="lazyload" data-autoplay muted loop playsinline></video>
