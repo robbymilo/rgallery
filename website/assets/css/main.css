@@ -89,6 +89,7 @@ html {
     @apply underline;
   }
 
+  .caption,
   figcaption {
     @apply my-1 text-sm;
   }

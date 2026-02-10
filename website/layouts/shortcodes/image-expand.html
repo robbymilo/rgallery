@@ -1,30 +1,13 @@
-{{ $src := .Get "src" }}
-{{ $alt := .Get "alt" }}
-{{ $caption := .Get "caption" }}
-{{ with (site.GetPage "/media").Resources.GetMatch $src }}
-  {{ $small := .Resize "800x webp q60" }}
-  {{ $large := .Resize "1600x webp q60" }}
-
-
-  <div class="image-container shadow-md" x-data="imageExpand">
-    {{ partial "figure" (dict
-      "src" $large.RelPermalink
-      "srcset" (printf "%s 800w, %s 1600w" $small.RelPermalink $large.RelPermalink)
-      "alt" $alt
-      "width" .Width
-      "height" .Height
-      "caption" (or $caption $alt))
-    }}
-    <div class="fade-overlay" x-show="!expanded" x-transition></div>
-    <button class="expand-btn" @click="toggleImage()">
-      <span class="plus-icon" :class="{ 'rotated': expanded }">+</span>
-    </button>
-  </div>
-
-  {{ with $caption }}
-    <figcaption>{{ . }}</figcaption>
-  {{ end }}
-
-{{ else }}
-  {{ errorf "media not found: %s" $src }}
-{{ end }}
+<div class="image-container shadow-md" x-data="imageExpand">
+  {{ partial "get-image" (dict
+    "src" (.Get "src")
+    "alt" (.Get "alt")
+    "hide_caption" true
+    )
+  }}
+  <div class="fade-overlay" x-show="!expanded" x-transition></div>
+  <button class="expand-btn" @click="toggleImage()">
+    <span class="plus-icon" :class="{ 'rotated': expanded }">+</span>
+  </button>
+</div>
+<p class="caption">{{ .Get "caption" }}</p>

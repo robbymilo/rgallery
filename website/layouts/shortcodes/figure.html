@@ -1,18 +1,6 @@
-{{ $src := .Get "src" }}
-{{ $alt := .Get "alt" }}
-{{ $caption := .Get "caption" }}
-{{ with (site.GetPage "/media").Resources.GetMatch $src }}
-  {{ $small := .Resize "800x webp q60" }}
-  {{ $large := .Resize "1600x webp q60" }}
-
-  {{ partial "figure" (dict
-    "src" $large.RelPermalink
-    "srcset" (printf "%s 800w, %s 1600w" $small.RelPermalink $large.RelPermalink)
-    "alt" $alt
-    "width" .Width
-    "height" .Height
-    "caption" (or $caption $alt))
-  }}
-{{ else }}
-  {{ errorf "media not found: %s" $src }}
-{{ end }}
+{{ partial "get-image" (dict
+  "src" (.Get "src")
+  "alt" (.Get "alt")
+  "caption" (.Get "caption")
+  )
+}}
