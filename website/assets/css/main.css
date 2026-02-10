@@ -13,6 +13,10 @@ body {
   font-optical-sizing: auto;
 }
 
+html {
+  scroll-padding-top: 56px;
+}
+
 .main {
   h1 {
     @apply leading-none font-bold tracking-tight md:text-4xl xl:text-4xl;
@@ -130,6 +134,14 @@ body {
 }
 .btn-white:hover {
   @apply bg-gray-200;
+}
+
+.btn-white-outline {
+  @apply border border-white text-white;
+}
+
+.btn-white-outline:hover {
+  @apply bg-white text-black;
 }
 
 .main .btn {

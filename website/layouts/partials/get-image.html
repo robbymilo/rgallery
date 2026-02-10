@@ -1,6 +1,7 @@
-{{ $src := .Get "src" }}
-{{ $alt := .Get "alt" }}
-{{ $caption := .Get "caption" }}
+{{ $src := .src }}
+{{ $alt := .alt }}
+{{ $hide_caption := .hide_caption }}
+{{ $caption := .caption }}
 {{ with (site.GetPage "/media").Resources.GetMatch $src }}
   {{ $small := .Resize "800x webp q60" }}
   {{ $large := .Resize "1600x webp q60" }}
@@ -11,6 +12,7 @@
     "alt" $alt
     "width" .Width
     "height" .Height
+    "hide_caption" $hide_caption
     "caption" (or $caption $alt))
   }}
 {{ else }}

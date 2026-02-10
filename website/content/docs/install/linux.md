@@ -15,15 +15,21 @@ Install the necessary dependencies:
 sudo apt update && sudo apt install -y exiftool ffmpeg libvips
 ```
 
-Navigate to the [releases page](https://packages.rmilo.dev/rgallery/).
+Navigate to the [releases page](https://github.com/robbymilo/rgallery/releases/latest).
 Navigate to the latest release.
 Download the latest release for your architecture:
 
 For amd64, run:
-`wget https://packages.rmilo.dev/rgallery/v0.0.1-beta51/rgallery_linux-amd64.tar.gz`
+
+```shell
+wget https://github.com/robbymilo/rgallery/releases/download/{{< version>}}/rgallery-geo_linux-amd64
+```
 
 For arm64, run:
-`wget https://packages.rmilo.dev/rgallery/v0.0.1-beta51/rgallery_linux-arm64.tar.gz`
+
+```shell
+wget https://github.com/robbymilo/rgallery/releases/download/{{< version>}}/rgallery-geo_linux-amd64`
+```
 
 Extract the release:
 

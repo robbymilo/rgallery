@@ -5,7 +5,7 @@
         class="relative mx-auto mt-6 max-w-md px-4 text-center sm:mb-6 sm:max-w-3xl sm:px-6 lg:mb-0 lg:px-0 lg:text-left"
       >
         <h1 class="max-w-[400px] pb-2 text-3xl text-gray-800 sm:mx-auto md:text-4xl lg:mx-0 lg:max-w-[400px]">
-          {{ .Description }}
+          {{ .Params.lead.title }}
         </h1>
         <p class="mx-auto mb-6 max-w-xl font-normal text-gray-900 md:text-lg lg:mx-0 xl:mb-2 xl:text-xl">
           {{ .Params.lead.content | page.RenderString }}
@@ -23,18 +23,14 @@
           >
           (User: <strong class="font-mono">demo</strong>, Password: <strong class="font-mono">demo</strong>)
         </p>
+        <a class="inline-flex text-white" href="{{ .Params.lead.install.link }}">{{ .Params.lead.install.text }}</a>
       </div>
       <div class="relative sm:py-8 lg:py-0">
         <div class="relative mx-auto max-w-md px-4 py-6 sm:max-w-3xl sm:px-6 lg:max-w-none lg:px-0">
           <div class="relative z-1 bg-black">
-            <img
-              data-srcset="{{ .Params.lead.image.srcset }}"
-              width="{{ .Params.lead.image.width }}"
-              height="{{ .Params.lead.image.height }}"
-              class="lazyload inset-0 h-full w-full rounded-lg object-cover shadow-xl"
-              alt="rgallery screenshot"
-              data-sizes="auto"
-            />
+            {{ with .Params.lead }}
+              {{ partial "get-image" (dict "src" .image "alt" .alt "hide_caption" true) }}
+            {{ end }}
           </div>
         </div>
       </div>

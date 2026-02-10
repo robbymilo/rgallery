@@ -29,3 +29,4 @@ react/dist
 .react-router
 build
 ui/version.json
+website/resources

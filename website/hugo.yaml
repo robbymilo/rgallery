@@ -30,6 +30,8 @@ module:
       target: static/fonts
     - source: static
       target: static
+    - source: ../ui/version.json
+      target: data/version.json
     - disableWatch: true
       source: hugo_stats.json
       target: assets/notwatching/hugo_stats.json
@@ -47,3 +49,5 @@ markup:
       attribute:
         block: true
         title: true
+
+enableGitInfo: true

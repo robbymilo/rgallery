@@ -4,17 +4,10 @@
       <div class="grid gap-10 md:h-[400px] md:grid-cols-2 md:items-center">
         <div class="md:order-{{ if modBool $i 2 }}1{{ else }}2{{ end }} shadow-lg">
           {{ with .image }}
-            <img
-              class="lazyload w-full"
-              data-srcset="{{ .srcset }}"
-              alt="{{ $e.title }}"
-              {{ with .width }}width="{{ . }}"{{ end }}
-              {{ with .height }}height="{{ . }}"{{ end }}
-              data-sizes="auto"
-            />
+            {{ partial "get-image" (dict "src" . "alt" $e.title) }}
           {{ end }}
           {{ with .video }}
-            <video src="{{ .src }}" class="lazyload" data-autoplay muted loop playsinline></video>
+            <video src="/media/{{ . }}" class="lazyload" data-autoplay muted loop playsinline></video>
           {{ end }}
         </div>
         <div class="md:order-{{ if modBool $i 2 }}2{{ else }}1{{ end }}">
