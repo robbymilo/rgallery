@@ -23,7 +23,7 @@ features:
     content: Search EXIF metadata across all your images and videos.
     video: /rgallery-search.mp4
   - title: Map view
-    content: Explore your geo-tagged memories across the world.
+    content: Explore your geo-tagged items across the world.
     image: /rgallery-map.png
   - title: Reverse geocoding
     content: Tag media items with cities and countries from EXIF coordinates without external API calls over the internet.

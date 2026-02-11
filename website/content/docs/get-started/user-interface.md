@@ -5,46 +5,57 @@ LinkTitle: User interface
 
 # User interface
 
-## Timeline view
+## Timeline page
 
-The timeline view displays your media library with items grouped by day. It is possible to search and filter by rating via the UI. The view also accepts query params for filtering that are not yet available via the UI.
+The Timeline displays your media library with items grouped by day. You can search in the filter bar and filter by star rating. By default, items with 0 or 1 star and above are shown. You can refine the filter to show items rated 2, 3, 4, or 5 stars. You can also toggle between images and videos; the default view shows both.
 
-{{< figure src="/rgallery-timeline-3.png" alt="rgallery timeline" >}}
+Search supports EXIF fields, including reverse-geocoded location data. It also supports structured search syntax, such as:
 
-## Memories
+- `tag:alpine-lakes-wilderness`
+- `folder:2010/20100330-santa-cruz`
+- `lens:AF Nikkor 85mm f/1.4D IF`
+- `camera:NIKON Z 9`
 
-If media items exist "on this day" from year(s) ago, they will be displayed at the top of the timeline. The memories UI can be dismissed for the day, which is persisted via the browser's local storage.
+On the right side, a scrubber lets you quickly navigate through your library. Drag it along the calendar to scroll to any point in your timeline. Each bar represents one month, and the length of the bar reflects how many media items are in that month.
 
-Click the "X days ago" to scroll to that date on the timeline.
+{{< figure src="/rgallery-timeline-3.png" alt="Timeline page." >}}
 
-{{< figure src="/ui/rgallery-memories.png" alt="rgallery memories" >}}
+## Memories page and panel.
 
-## Favorites
+If media items exist from previous years on the same day, they appear in a panel on the left side of the Timeline. This panel opens on hover or click. You can dismiss the memories for that day, and your choice is saved in the browser’s local storage.
 
-The favorites view shows all media items with an EXIF rating of 5. Favorites can also be viewed in the timeline view by using the star filter.
+Click “X days ago” or "View more" to scroll to that date in the Timeline.
 
-{{< figure src="/ui/rgallery-favorites.png" alt="rgallery favorites" >}}
+{{< figure src="/ui/rgallery-memories.png" alt="Memories page." >}}
 
-## Folders
+{{< figure src="/rgallery-memories.png" alt="Memories spine on the timeline page." >}}
 
-The folders view shows a navigable list of all folders found in the media directory.
+## Favorites view
 
-{{< figure src="/ui/rgallery-folders.png" alt="rgallery folders" >}}
+Click the fifth star in the filter bar to enable the Favorites view. This view shows all media items with an EXIF rating of 5.
 
-## Tags
+{{< figure src="/ui/rgallery-favorites.png" alt="Favorites page." >}}
 
-The tags view shows a navigable list of all EXIF tags. The EXIF field "subject" is used.
+## Folders page
 
-{{< figure src="/ui/rgallery-tags.png" alt="rgallery tags" >}}
+The Folders page displays a navigable list of all folders in the media directory.
 
-## Gear
+{{< figure src="/ui/rgallery-folders.png" alt="Folders page." >}}
 
-The gear view shows a navigable list of cameras, lenses, focal lengths, and more along with the total count of media items.
+## Tags page
 
-{{< figure src="/ui/rgallery-gear.png" alt="rgallery gear" >}}
+The Tags page displays a navigable list of all EXIF tags. It uses the EXIF “subject” field.
 
-## Map
+{{< figure src="/ui/rgallery-tags.png" alt="Tags page." >}}
 
-The map view shows a map of all media items that contain GPS coordinates.
+## Gear page
 
-{{< figure src="/ui/rgallery-map.png" alt="rgallery map" >}}
+The Gear page displays a navigable list of cameras, lenses, focal lengths, and more, along with the total number of media items.
+
+{{< figure src="/ui/rgallery-gear.png" alt="Gear page." >}}
+
+## Map page
+
+The Map page displays all media items that include GPS coordinates on a map.
+
+{{< figure src="/ui/rgallery-map.png" alt="Map page." >}}
