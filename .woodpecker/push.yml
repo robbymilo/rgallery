@@ -7,6 +7,7 @@ steps:
       - make npm prettier-test
       - make sha
       - make typecheck
+      - make test-ui
 
   - name: lint
     image: golangci/golangci-lint:v2.8.0

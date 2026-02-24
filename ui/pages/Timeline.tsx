@@ -109,6 +109,10 @@ const App: React.FC = () => {
     params.delete('rating');
     params.delete('tag');
     params.delete('folder');
+    params.delete('camera');
+    params.delete('lens');
+    params.delete('software');
+    params.delete('focallength35');
     params.delete('type');
     params.delete('orderby');
     params.delete('direction');
@@ -118,6 +122,10 @@ const App: React.FC = () => {
     if (apiFilters.rating && apiFilters.rating > 1) params.set('rating', apiFilters.rating.toString());
     if (apiFilters.tag) params.set('tag', apiFilters.tag);
     if (apiFilters.folder) params.set('folder', apiFilters.folder);
+    if (apiFilters.camera) params.set('camera', apiFilters.camera);
+    if (apiFilters.lens) params.set('lens', apiFilters.lens);
+    if (apiFilters.software) params.set('software', apiFilters.software);
+    if (apiFilters.focallength35) params.set('focallength35', apiFilters.focallength35.toString());
     if (apiFilters.type) params.set('type', apiFilters.type);
     // Only add orderby/direction if not default values
     if (apiFilters.orderby && apiFilters.orderby !== 'date') params.set('orderby', apiFilters.orderby);
