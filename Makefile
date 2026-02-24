@@ -103,3 +103,6 @@ vite: sha
 
 preview:
 	cd ui && npm run build && npm run preview
+
+test-ui:
+	cd ui && npm run test

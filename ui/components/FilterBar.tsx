@@ -4,6 +4,7 @@ import StarRating from './StarRating';
 import Close from '../svg/close.svg?react';
 import Filter from '../svg/filter.svg?react';
 import Magnifier from '../svg/magnifier.svg?react';
+import { parseSearchTokens } from '../lib/parseSearchTokens';
 
 interface FilterBarProps {
   filters: FilterState;
@@ -16,68 +17,11 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, totalIte
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
+    const parsed = parseSearchTokens(raw);
 
-    // Look for tokens like `tag:value`, `camera:value`, `lens:value`, `software:value`, `focallength35:123`
-    const parts = raw.split(/\s+/).filter(Boolean);
-    let remainingParts = [...parts];
-    let foundTag: string | undefined = undefined;
-    let foundCamera: string | undefined = undefined;
-    let foundLens: string | undefined = undefined;
-    let foundSoftware: string | undefined = undefined;
-    let foundFolder: string | undefined = undefined;
-    let foundFocal: number | undefined = undefined;
-
-    for (let i = 0; i < parts.length; i++) {
-      const p = parts[i];
-      let m;
-      m = p.match(/^tag:(.+)$/i);
-      if (m) {
-        foundTag = m[1];
-        remainingParts.splice(remainingParts.indexOf(p), 1);
-        continue;
-      }
-      m = p.match(/^camera:(.+)$/i);
-      if (m) {
-        foundCamera = m[1];
-        remainingParts.splice(remainingParts.indexOf(p), 1);
-        continue;
-      }
-      m = p.match(/^lens:(.+)$/i);
-      if (m) {
-        foundLens = m[1];
-        remainingParts.splice(remainingParts.indexOf(p), 1);
-        continue;
-      }
-      m = p.match(/^software:(.+)$/i);
-      if (m) {
-        foundSoftware = m[1];
-        remainingParts.splice(remainingParts.indexOf(p), 1);
-        continue;
-      }
-      m = p.match(/^folder:(.+)$/i);
-      if (m) {
-        foundFolder = m[1];
-        remainingParts.splice(remainingParts.indexOf(p), 1);
-        continue;
-      }
-      m = p.match(/^focallength35:(\d+)$/i);
-      if (m) {
-        foundFocal = parseInt(m[1], 10);
-        remainingParts.splice(remainingParts.indexOf(p), 1);
-        continue;
-      }
-    }
-
-    const newSearch = remainingParts.join(' ');
     onFilterChange({
       ...filters,
-      searchQuery: newSearch,
-      tag: foundTag,
-      camera: foundCamera,
-      lens: foundLens,
-      software: foundSoftware,
-      folder: foundFolder,
-      focallength35: foundFocal,
+      ...parsed,
     });
   };
 
