@@ -15,8 +15,6 @@ import (
 type Media = types.Media
 type Days = types.Days
 type Filter = types.Filter
-type ResponseFilter = types.ResponseFilter
-
 type CacheKey = types.CacheKey
 
 func ServeTimeline(w http.ResponseWriter, r *http.Request) {

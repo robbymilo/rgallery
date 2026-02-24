@@ -31,13 +31,11 @@ func ServeAdmin(w http.ResponseWriter, r *http.Request, c Conf) {
 	}
 
 	response := ResponseAdmin{
-		HideNavFooter: false,
-		HideAuth:      c.DisableAuth,
-		Keys:          keys,
-		Users:         users,
-		UserName:      user.UserName,
-		UserRole:      user.UserRole,
-		Meta:          c.Meta,
+		Keys:     keys,
+		Users:    users,
+		UserName: user.UserName,
+		UserRole: user.UserRole,
+		Meta:     c.Meta,
 	}
 
 	w.Header().Set("Cache-Control", "private, max-age=0, must-revalidate")

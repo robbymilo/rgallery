@@ -16,10 +16,6 @@ import (
 )
 
 type RawMinimalMedia = types.RawMinimalMedia
-type Segment = types.Segment
-type SegmentMedia = types.SegmentMedia
-type SegmentGroup = types.SegmentGroup
-type ResponseSegment = types.ResponseSegment
 type GearItem = types.GearItem
 type GearItems = types.GearItems
 type Conf = types.Conf

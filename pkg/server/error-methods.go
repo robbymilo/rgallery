@@ -13,10 +13,9 @@ type Meta = types.Meta
 func NotFound(w http.ResponseWriter, r *http.Request) {
 
 	response := ResponseNotFound{
-		Message:       "Not found.",
-		Title:         "404",
-		Section:       "errors",
-		HideNavFooter: false,
+		Message: "Not found.",
+		Title:   "404",
+		Section: "errors",
 	}
 
 	w.WriteHeader(http.StatusNotFound)
@@ -27,10 +26,9 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 func NotAllowed(w http.ResponseWriter, r *http.Request) {
 
 	response := ResponseNotFound{
-		Message:       "Not allowed.",
-		Title:         "500",
-		Section:       "errors",
-		HideNavFooter: false,
+		Message: "Not allowed.",
+		Title:   "500",
+		Section: "errors",
 	}
 
 	w.WriteHeader(http.StatusMethodNotAllowed)

@@ -24,7 +24,6 @@ import (
 type ResponseMedia = types.ResponseMedia
 type ResponseTags = types.ResponseTags
 type ResponseFolders = types.ResponseFolders
-type ResponseFilter = types.ResponseFilter
 type ResponseGear = types.ResponseGear
 
 var c = Conf{

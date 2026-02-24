@@ -49,18 +49,17 @@ func ServeFolder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := ResponseMediaItems{
-		Title:         folder,
-		Slug:          folder,
-		MediaItems:    media,
-		OrderBy:       "date",
-		Page:          page,
-		PageSize:      pageSize,
-		Total:         total,
-		Direction:     params.Direction,
-		Collection:    "folder",
-		Section:       "folders",
-		HideNavFooter: false,
-		Meta:          c.Meta,
+		Title:      folder,
+		Slug:       folder,
+		MediaItems: media,
+		OrderBy:    "date",
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      total,
+		Direction:  params.Direction,
+		Collection: "folder",
+		Section:    "folders",
+		Meta:       c.Meta,
 	}
 
 	err = render.Render(w, r, response, "images")

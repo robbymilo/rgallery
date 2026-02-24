@@ -34,7 +34,6 @@ func ServeGear(w http.ResponseWriter, r *http.Request) {
 		Software:      software,
 		Section:       "gear",
 		Title:         "Gear stats",
-		HideNavFooter: false,
 		Meta:          c.Meta,
 	}
 

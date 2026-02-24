@@ -38,17 +38,16 @@ func ServeFolders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := ResponseFolders{
-		Folders:       folders,
-		Title:         "Folders",
-		OrderBy:       "date",
-		Page:          params.Page,
-		PageSize:      pageSize,
-		Total:         total,
-		Direction:     params.Direction,
-		Collection:    "folder",
-		Section:       "folders",
-		HideNavFooter: false,
-		Meta:          c.Meta,
+		Folders:    folders,
+		Title:      "Folders",
+		OrderBy:    "date",
+		Page:       params.Page,
+		PageSize:   pageSize,
+		Total:      total,
+		Direction:  params.Direction,
+		Collection: "folder",
+		Section:    "folders",
+		Meta:       c.Meta,
 	}
 
 	err = render.Render(w, r, response, "folders")

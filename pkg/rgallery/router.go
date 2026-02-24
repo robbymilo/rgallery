@@ -131,7 +131,6 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 		r.Get("/tags", server.ServeTags)
 		r.Get("/tag/{slug}", server.ServeTag)
 
-		r.Get("/favorites", server.ServeFavorites)
 		r.Get("/map", server.ServeMap)
 		r.Get("/gear", server.ServeGear)
 		r.Get("/admin", func(w http.ResponseWriter, r *http.Request) {

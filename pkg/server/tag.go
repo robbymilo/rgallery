@@ -43,17 +43,16 @@ func ServeTag(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := ResponseMediaItems{
-		MediaItems:    media,
-		Title:         title,
-		Slug:          tag,
-		OrderBy:       "date",
-		Page:          params.Page,
-		PageSize:      pageSize,
-		Total:         total,
-		Direction:     params.Direction,
-		Collection:    "tag",
-		Section:       "tags",
-		HideNavFooter: false,
+		MediaItems: media,
+		Title:      title,
+		Slug:       tag,
+		OrderBy:    "date",
+		Page:       params.Page,
+		PageSize:   pageSize,
+		Total:      total,
+		Direction:  params.Direction,
+		Collection: "tag",
+		Section:    "tags",
 	}
 
 	err = render.Render(w, r, response, "images")

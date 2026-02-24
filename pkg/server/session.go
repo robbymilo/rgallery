@@ -112,8 +112,7 @@ func ServeLogOut(w http.ResponseWriter, r *http.Request) {
 // ServeSignIn serves the sign in page.
 func ServeSignIn(w http.ResponseWriter, r *http.Request) {
 	response := ResponsAuth{
-		HideNavFooter: true,
-		Section:       "auth",
+		Section: "auth",
 	}
 	_ = render.Render(w, r, response, "signin")
 }
