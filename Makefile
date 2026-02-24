@@ -3,6 +3,7 @@ TARGETARCH = $(shell go env GOARCH)
 TARGETOS = $(shell go env GOOS)
 FLAGS = -ldflags="-X 'main.Commit=$(shell git rev-parse HEAD)' -X 'main.Tag=$(shell git describe --exact-match --tags)'"
 SHA = $(shell git rev-parse HEAD)
+TAG = $(shell git describe --exact-match --tags)
 TZ = Europe/Stockholm
 -include $(PWD)/.env
 
@@ -87,7 +88,7 @@ install-mac: build-darwin
 website-build-sha:
 	printf "/*\n  build: $(SHA)" > website/content/_headers
 
-website: website-build-sha
+website: sha website-build-sha
 	cd website && npm ci
 	cd website && hugo --gc --minify
 
