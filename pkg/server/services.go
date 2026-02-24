@@ -1,6 +1,8 @@
 package server
 
-import "net/http"
+import (
+	"net/http"
+)
 
 // CheckResizeServiceHealth confirms the resize service is available to resize images.
 func CheckResizeServiceHealth(c Conf) error {
@@ -9,7 +11,11 @@ func CheckResizeServiceHealth(c Conf) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			c.Logger.Error("res.Body.Close error:", "err", err)
+		}
+	}()
 
 	return nil
 }
@@ -21,7 +27,11 @@ func CheckLocationServiceHealth(c Conf) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			c.Logger.Error("res.Body.Close error:", "err", err)
+		}
+	}()
 
 	return nil
 }

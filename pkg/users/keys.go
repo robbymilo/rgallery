@@ -34,7 +34,11 @@ func AddKey(creds *ApiCredentials, c Conf) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error opening sqlite db: %w", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 
 	// check for existing key
 	stmt, err := conn.Prepare("SELECT 1 FROM keys WHERE name=?")
@@ -92,7 +96,11 @@ func RemoveKey(creds *ApiCredentials, c Conf) error {
 	if err != nil {
 		return fmt.Errorf("error opening sqlite db: %w", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 
 	stmt, err := conn.Prepare("DELETE FROM keys WHERE name =?")
 	if err != nil {
@@ -125,7 +133,11 @@ func GetKeyNames(c Conf) ([]ApiCredentials, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("pool.Close error", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {

@@ -1,24 +1,17 @@
 {{ range $i, $e := .Params.features }}
-  <section class="px-8 py-2 max-w-screen-xl mx-auto">
+  <section class="mx-auto max-w-screen-xl px-8 py-2">
     {{ with $e }}
-      <div class="grid md:grid-cols-2 md:items-center gap-10 md:h-[400px]">
-        <div class="shadow-lg md:order-{{ if modBool $i 2 }}1{{ else }}2{{ end }}">
+      <div class="grid gap-10 md:h-[400px] md:grid-cols-2 md:items-center">
+        <div class="md:order-{{ if modBool $i 2 }}1{{ else }}2{{ end }} shadow-lg">
           {{ with .image }}
-            <img
-              class="lazyload w-full"
-              data-srcset="{{ .srcset }}"
-              alt="{{ $e.title }}"
-              {{ with .width }}width="{{ . }}"{{ end }}
-              {{ with .height }}height="{{ . }}"{{ end }}
-              data-sizes="auto"
-            />
+            {{ partial "get-image" (dict "src" . "alt" $e.title "hide_caption" true "class" "mb-0") }}
           {{ end }}
           {{ with .video }}
-            <video src="{{ .src }}" class="lazyload" data-autoplay muted loop playsinline></video>
+            <video src="/media/{{ . }}" class="lazyload" data-autoplay muted loop playsinline></video>
           {{ end }}
         </div>
         <div class="md:order-{{ if modBool $i 2 }}2{{ else }}1{{ end }}">
-          <h2 class="text-2xl font-bold mb-4">{{ .title }}</h2>
+          <h2 class="mb-4 text-2xl font-bold">{{ .title }}</h2>
           <p class="text-gray-600">
             {{ .content | markdownify }}
           </p>

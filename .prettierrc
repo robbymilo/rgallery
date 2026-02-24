@@ -7,7 +7,7 @@
   "bracketSpacing": true,
   "arrowParens": "always",
   "goTemplateBracketSpacing": true,
-  "plugins": ["prettier-plugin-go-template", "prettier-plugin-css-order"],
+  "plugins": ["prettier-plugin-go-template", "prettier-plugin-css-order", "prettier-plugin-tailwindcss"],
   "overrides": [
     {
       "files": ["*.html"],

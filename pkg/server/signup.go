@@ -2,9 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/robbymilo/rgallery/pkg/users"
 )
@@ -14,44 +12,37 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	params := r.Context().Value(ParamsKey{}).(FilterParams)
 	c := r.Context().Value(ConfigKey{}).(Conf)
 
-	// get signin as JSON
 	creds := &UserCredentials{}
+
 	if params.Json {
-		err := json.NewDecoder(r.Body).Decode(creds)
-		if err != nil {
-			fmt.Println("error decoding json:", err)
-
-			w.WriteHeader(http.StatusBadRequest)
-			_, err := w.Write([]byte("400\n"))
-			if err != nil {
-				fmt.Println("error writing 400 response:", err)
-			}
-
+		if err := json.NewDecoder(r.Body).Decode(creds); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			c.Logger.Error("error decoding json", "error", err)
 			return
 		}
 	} else {
-		err := r.ParseForm()
-		if err != nil {
-			fmt.Println("error parsing form:", err)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			c.Logger.Error("error parsing form", "error", err)
+			return
 		}
-		creds.Username = r.Form["username"][0]
-		creds.Password = r.Form["password"][0]
-		creds.Role = r.Form["role"][0]
+		// Defensive checks for form fields
+		if r.Form.Get("username") == "" || r.Form.Get("password") == "" || r.Form.Get("role") == "" {
+			http.Error(w, "Missing required fields", http.StatusBadRequest)
+			return
+		}
+		creds.Username = r.Form.Get("username")
+		creds.Password = r.Form.Get("password")
+		creds.Role = r.Form.Get("role")
 	}
 
-	// create error URL
-	errorUrl, _ := url.Parse("/adduser")
-	errorParams := url.Values{}
-	errorParams.Add("error", "true")
-	errorUrl.RawQuery = errorParams.Encode()
-
-	err := users.AddUser(*creds, c)
-	if err != nil {
-		fmt.Println("error adding user:", err)
-		http.Redirect(w, r, errorUrl.String(), http.StatusFound)
+	if err := users.AddUser(*creds, c); err != nil {
+		c.Logger.Error("error adding user", "error", err)
+		http.Error(w, "Error adding user", http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, "/admin", http.StatusFound)
-
+	if _, err := w.Write([]byte("Success\n")); err != nil {
+		c.Logger.Error("error writing success response", "error", err)
+	}
 }

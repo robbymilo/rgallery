@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/robbymilo/rgallery/pkg/types"
-	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v3"
+	cli "github.com/urfave/cli/v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type Meta = types.Meta
@@ -66,7 +66,7 @@ func GetConf(cCtx cli.Context, Commit, Tag string) Conf {
 	c.LocationDataset = cCtx.String("location-dataset")
 	c.IncludeOriginals = cCtx.Bool("include-originals")
 	c.Media = cCtx.String("media")
-	c.OnThisDay = cCtx.Bool("on-this-day")
+	c.Memories = cCtx.Bool("memories")
 	c.PreGenerateThumb = cCtx.Bool("pregenerate-thumbs")
 	c.Quality = cCtx.Int("quality")
 	c.TranscodeResolution = cCtx.Int("transcode-resolution")

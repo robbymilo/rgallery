@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -35,7 +34,7 @@ func ServeTranscode(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err := w.Write([]byte("503\n"))
-				fmt.Println("error reading saved index.m3u8 file:", err)
+				c.Logger.Error("error reading saved index.m3u8 file:", "err", err)
 			}
 
 		} else {
@@ -45,7 +44,7 @@ func ServeTranscode(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err := w.Write([]byte("503\n"))
-				fmt.Println("error getting single media item:", err)
+				c.Logger.Error("error getting single media item:", "err", err)
 				return
 			}
 
@@ -55,7 +54,7 @@ func ServeTranscode(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err := w.Write([]byte("503\n"))
-				fmt.Println("error transcoding video:", err)
+				c.Logger.Error("error transcoding video:", "err", err)
 				return
 			}
 
@@ -63,7 +62,7 @@ func ServeTranscode(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, err := w.Write([]byte("503\n"))
-				fmt.Println("error reading saved index.m3u8 file:", err)
+				c.Logger.Error("error reading saved index.m3u8 file:", "err", err)
 			}
 			w.Header().Set("Content-Type", "audio/mpegurl")
 		}
@@ -75,7 +74,7 @@ func ServeTranscode(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, err := w.Write([]byte("503\n"))
-			fmt.Println("error reading saved TS file:", err)
+			c.Logger.Error("error reading saved TS file:", "err", err)
 		}
 
 		w.Header().Set("Content-Type", "application/octet-stream")

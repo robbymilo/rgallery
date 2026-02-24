@@ -6,7 +6,7 @@ title: Map tiles
 
 The map view shows geo tagged images on the world map. You can zoom and pan the map, and navigate to media items by clicking on their icons.
 
-{{< figure src="https://packages.rmilo.dev/images/screenshots/rgallery-map.png" alt="rgallery map" width="3000" height="1875" srcset="https://packages.rmilo.dev/images/screenshots/rgallery-map-800.png 800w, https://packages.rmilo.dev/images/screenshots/rgallery-map-1600.png 1600w" >}}
+{{< figure src="/rgallery-map.png" alt="rgallery map" >}}
 
 ## Tile server
 

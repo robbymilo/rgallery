@@ -1,0 +1,4 @@
+website/content/media/*.png filter=lfs diff=lfs merge=lfs -text
+website/content/media/*.mp4 filter=lfs diff=lfs merge=lfs -text
+website/content/media/ui/*.png filter=lfs diff=lfs merge=lfs -text
+website/content/media/ui/*.mp4 filter=lfs diff=lfs merge=lfs -text

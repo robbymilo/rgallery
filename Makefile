@@ -16,17 +16,21 @@ clean:
 npm:
 	npm ci
 
+.PHONY: sha
+sha:
+	@echo '{"sha": "$(SHA)", "tag": "$(TAG)"}' > ui/version.json
+
 .PHONY: assets
-assets:
-	node assets/esbuild.config.mjs
+assets: sha
+	cd ui && npm run build
 
 .PHONY: prettier
 prettier:
-	prettier --plugin=prettier-plugin-go-template --plugin=prettier-plugin-css-order --check '{website,assets,pkg}/**/*.{js,scss,html,md}' --write --log-level warn
+	npm run prettier
 
 .PHONY: prettier-test
 prettier-test:
-	prettier --plugin=prettier-plugin-go-template --plugin=prettier-plugin-css-order --check '{website,assets,pkg}/**/*.{js,scss,html,md}' --log-level warn
+	npm run prettier-test
 
 build: build-rgallery build-rgallery-resize build-rgallery-geo
 
@@ -50,7 +54,7 @@ DEV_FLAGS=--location-dataset=Countries10
 # local dev
 .PHONY: run
 run:
-	go run $(FLAGS) ./cmd/rgallery/main.go -dev --disable-auth $(DEV_FLAGS)
+	TZ=$(TZ) go run $(FLAGS) ./cmd/rgallery/main.go -dev $(DEV_FLAGS)
 
 resize:
 	go run ./cmd/rgallery-resize/main.go
@@ -62,8 +66,8 @@ run-all:
 	make -j 3 run resize geo RGALLERY_RESIZE_SERVICE=http://localhost:3001 RGALLERY_LOCATION_SERVICE=http://localhost:3002 TZ=$(TZ)
 
 # run make test before to get mod time correct
-run-test: clean
-	go run $(FLAGS) ./cmd/rgallery/main.go --disable-auth --media testdata/media --cache testdata/cache --data testdata/data --config testdata/config/config.yml --on-this-day=false  TZ=$(TZ)
+run-test:
+	go run $(FLAGS) ./cmd/rgallery/main.go --disable-auth --media testdata/media --cache testdata/cache --data testdata/data --config testdata/config/config.yml --memories=false  TZ=$(TZ)
 
 .PHONY: test
 test: clean
@@ -89,3 +93,12 @@ website: website-build-sha
 
 server:
 	cd website && (hvm use --useVersionInDotFile || true) && $(HUGO) server
+
+typecheck:
+	npm run typecheck
+
+vite: sha
+	cd ui && npm run dev
+
+preview:
+	cd ui && npm run build && npm run preview

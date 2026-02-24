@@ -1,0 +1,6 @@
+{{- with site.Data.version.tag -}}
+  {{- . -}}
+{{- else -}}
+  {{- printf "%s" "0.0.3" -}}
+  {{- warnf "version data not found" -}}
+{{- end -}}

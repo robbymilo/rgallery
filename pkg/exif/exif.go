@@ -35,7 +35,11 @@ func GetLens(absolute_path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error starting exiftool: %v", err)
 	}
-	defer et.Close()
+	defer func() {
+		if err := et.Close(); err != nil {
+			fmt.Printf("error closing exiftool: %v\n", err)
+		}
+	}()
 
 	exif := et.ExtractMetadata(absolute_path)
 
@@ -72,7 +76,8 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 	var color string
 	var rotation float64
 
-	if mediatype == "image" {
+	switch mediatype {
+	case "image":
 		// need to open separately from exiftool to get correct orientation
 		img, err = resize.DecodeImage(absolute_path)
 		if err != nil {
@@ -93,7 +98,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 			}
 		}
 
-	} else if mediatype == "video" {
+	case "video":
 		for _, fileInfo := range exif {
 
 			if fileInfo.Fields["Rotation"] != nil {
@@ -217,7 +222,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 			case reflect.String:
 				v := fmt.Sprint(fileInfo.Fields["Subject"])
 
-				k := strings.Replace(strings.ToLower(v), " ", "-", -1)
+				k := strings.ReplaceAll(strings.ToLower(v), " ", "-")
 				var r Subject
 				r.Key = k
 				r.Value = v
@@ -227,7 +232,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 				s := reflect.ValueOf(fileInfo.Fields["Subject"])
 				for i := 0; i < s.Len(); i++ {
 					v := fmt.Sprint(s.Index(i))
-					k := strings.Replace(strings.ToLower(v), " ", "-", -1)
+					k := strings.ReplaceAll(strings.ToLower(v), " ", "-")
 
 					var r Subject
 					r.Key = k
@@ -461,7 +466,7 @@ func stringToDate(date_string string) (time.Time, error) {
 
 	// If the numeric string length isn't one of the expected lengths,
 	// prefer the YYYYMMDD date-only form by truncating to 8 digits.
-	if !(len(time_string) == 8 || len(time_string) == 10 || len(time_string) == 12 || len(time_string) == 14) {
+	if len(time_string) != 8 && len(time_string) != 10 && len(time_string) != 12 && len(time_string) != 14 {
 		if len(time_string) > 8 {
 			time_string = time_string[:8]
 		}

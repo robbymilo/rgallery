@@ -1,30 +1,13 @@
-{{ $src := .Get "src" }}
-{{ $srcset := .Get "srcset" }}
-{{ $caption := .Get "caption" }}
-{{ $alt := .Get "alt" }}
-{{ $width := .Get "width" }}
-{{ $height := .Get "height" }}
-
-{{ $image := .Get "image" }}
-{{ $caption := .Get "caption" }}
-
-
 <div class="image-container shadow-md" x-data="imageExpand">
-  <figure class="mb-4">
-    <img
-      class="lazyload"
-      data-srcset="{{ $srcset }}"
-      alt="{{ $alt }}"
-      {{ if $width }}width="{{ $width }}"{{ end }}
-      {{ if $height }}height="{{ $height }}"{{ end }}
-      data-sizes="auto"
-    />
-  </figure>
+  {{ partial "get-image" (dict
+    "src" (.Get "src")
+    "alt" (.Get "alt")
+    "hide_caption" true
+    )
+  }}
   <div class="fade-overlay" x-show="!expanded" x-transition></div>
   <button class="expand-btn" @click="toggleImage()">
     <span class="plus-icon" :class="{ 'rotated': expanded }">+</span>
   </button>
 </div>
-{{ with $caption }}
-  <figcaption>{{ . }}</figcaption>
-{{ end }}
+<p class="caption">{{ .Get "caption" }}</p>

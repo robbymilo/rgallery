@@ -3,7 +3,6 @@ package queries
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/robbymilo/rgallery/pkg/database"
 	"github.com/robbymilo/rgallery/pkg/types"
@@ -30,7 +29,11 @@ func GetTotalMediaItems(rating int, from, to, camera, lens string, c Conf) (int,
 	if err != nil {
 		return 0, fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("error closing pool", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {
@@ -64,21 +67,4 @@ func GetTotalMediaItems(rating int, from, to, camera, lens string, c Conf) (int,
 	}
 
 	return total, nil
-}
-
-// getTimeLocal takes a UTC time and offset and returns a local date
-func getTimeLocal(dateString string, offset float64) (time.Time, error) {
-
-	// Parse UTC timestamp
-	t, err := time.Parse(time.RFC3339, dateString)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	offsetDuration := time.Duration(offset/60)*time.Hour + time.Duration(offset/60)*time.Minute
-
-	// Add offset to UTC time
-	localTime := t.Add(offsetDuration)
-
-	return localTime, nil
 }

@@ -1,10 +1,10 @@
 <div class="relative my-4">
   <div class="lg:mx-auto lg:grid lg:max-w-7xl lg:grid-cols-2 lg:items-start lg:gap-24 lg:px-8">
     <div class="relative sm:py-8 lg:py-0">
-      <div class="relative max-w-md px-4 py-6 mx-auto sm:max-w-3xl sm:px-6 lg:max-w-none lg:px-0 lg:py-20">
-        <div class="relative pt-64 pb-10 overflow-hidden shadow-xl rounded-2xl h-125">
+      <div class="relative mx-auto max-w-md px-4 py-6 sm:max-w-3xl sm:px-6 lg:max-w-none lg:px-0 lg:py-20">
+        <div class="relative h-125 overflow-hidden rounded-2xl pt-64 pb-10 shadow-xl">
           <video
-            class="absolute inset-0 object-cover object-28-50 w-full h-full rounded-lg "
+            class="object-28-50 absolute inset-0 h-full w-full rounded-lg object-cover"
             autoplay
             loop
             muted
@@ -16,13 +16,13 @@
         </div>
       </div>
     </div>
-    <div class="relative max-w-md px-4 mx-auto sm:max-w-3xl sm:px-6 lg:px-0">
-      <div class="md:pt-12 sm:py-6 lg:pt-10">
+    <div class="relative mx-auto max-w-md px-4 sm:max-w-3xl sm:px-6 lg:px-0">
+      <div class="sm:py-6 md:pt-12 lg:pt-10">
         <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">
           {{ .title }}
         </h2>
         {{ with .subhead }}
-          <h3 class="text-xl font-bold tracking-tight mt-1">{{ . }}</h3>
+          <h3 class="mt-1 text-xl font-bold tracking-tight">{{ . }}</h3>
         {{ end }}
         <div class="mt-6 space-y-6">
           {{ range .items }}

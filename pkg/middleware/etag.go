@@ -4,23 +4,36 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
-var etags = make(map[string]string)
+var (
+	persistedEtagMu sync.RWMutex
+	persistedEtag   = make(map[string]string)
+)
 
 func PersistEtag(key, etag string) {
 	var now = time.Now().UTC().Format("20060102")
-	etags[key+now] = etag
+	SetPersistedEtag(key+now, etag)
 }
 
 func GetPersistedEtag(key string) string {
-	var now = time.Now().UTC().Format("20060102")
-	return etags[key+now]
+	persistedEtagMu.RLock()
+	defer persistedEtagMu.RUnlock()
+	return persistedEtag[key]
 }
 
 func RemoveEtags() {
-	etags = make(map[string]string)
+	persistedEtagMu.Lock()
+	defer persistedEtagMu.Unlock()
+	persistedEtag = make(map[string]string)
+}
+
+func SetPersistedEtag(key, value string) {
+	persistedEtagMu.Lock()
+	defer persistedEtagMu.Unlock()
+	persistedEtag[key] = value
 }
 
 func Etag(c Conf) func(http.Handler) http.Handler {

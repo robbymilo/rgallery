@@ -85,7 +85,7 @@ func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 	media.Color = color
 
 	// pre-transcode image
-	if c.PreGenerateThumb || regenThumb {
+	if c.PreGenerateThumb && regenThumb {
 		index_file := transcode.CreateHLSIndexFilePath(media.Hash, c)
 		err = transcode.TranscodeWithLock(absolute_path, index_file, media.Hash, c)
 		if err != nil {
@@ -127,7 +127,11 @@ func insertMediaItem(media Media, c Conf) error {
 	if err != nil {
 		return fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("error closing pool", "err", err)
+		}
+	}()
 
 	// Take a connection from the pool
 	conn, err := pool.Take(context.Background())

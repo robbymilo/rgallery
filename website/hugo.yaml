@@ -20,7 +20,7 @@ module:
       target: assets/docker-compose.yml
     - source: ../docker-compose-scalable.yml
       target: assets/docker-compose-scalable.yml
-    - source: ../pkg/static/logo.svg
+    - source: ../ui/svg/logo.svg
       target: assets/logo.svg
     - source: ../pkg/fonts # for main.css
       target: assets/css/fonts
@@ -30,6 +30,8 @@ module:
       target: static/fonts
     - source: static
       target: static
+    - source: ../ui/version.json
+      target: data/version.json
     - disableWatch: true
       source: hugo_stats.json
       target: assets/notwatching/hugo_stats.json
@@ -47,3 +49,5 @@ markup:
       attribute:
         block: true
         title: true
+
+enableGitInfo: true

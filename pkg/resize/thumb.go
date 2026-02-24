@@ -121,23 +121,31 @@ func GetThumbFromResizeService(media Media, size int, c Conf) ([]byte, error) {
 
 		var res *http.Response
 
-		if media.Type == "image" {
+		switch media.Type {
+		case "image":
 			res, err = uploadFileMultipart(url, path)
 			if err != nil {
 				return nil, fmt.Errorf("error requesting image from resize service: %v", err)
 			}
-			defer res.Body.Close()
-		} else if media.Type == "video" {
+			defer func() {
+				if err := res.Body.Close(); err != nil {
+					c.Logger.Error("res.Body.Close error:", "err", err)
+				}
+			}()
+		case "video":
 			file, err := CreateVideoThumb(path)
 			if err != nil {
 				return nil, fmt.Errorf("error getting video thumb from video: %v", err)
 			}
-
 			res, err = uploadReaderFileMultipart(url, path, file)
 			if err != nil {
 				return nil, fmt.Errorf("error requesting video thumb from resize service: %v", err)
 			}
-			defer res.Body.Close()
+			defer func() {
+				if err := res.Body.Close(); err != nil {
+					c.Logger.Error("res.Body.Close error:", "err", err)
+				}
+			}()
 		}
 
 		if res.StatusCode == http.StatusOK {
@@ -186,7 +194,11 @@ func uploadFileMultipart(url, path string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println("f.Close error:", err)
+		}
+	}()
 
 	resp, err := uploadReaderFileMultipart(url, path, f)
 	return resp, err

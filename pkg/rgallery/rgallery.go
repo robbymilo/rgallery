@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"time"
 	_ "time/tzdata"
 
@@ -103,7 +102,7 @@ func SetupApp(Commit, Tag string) {
 			Name:    "tile-server",
 			Usage:   "URL for GeoServer tiles in XYZ format, ex https://tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=your-api-key-here.",
 			EnvVars: []string{"RGALLERY_TILE_SERVER"},
-			Value:   "/tiles/{z}/{x}/{y}.png",
+			Value:   "/api/tiles/{z}/{x}/{y}.png",
 		},
 		&cli.IntFlag{
 			Name:    "session-length",
@@ -117,7 +116,7 @@ func SetupApp(Commit, Tag string) {
 			Value: false,
 		},
 		&cli.BoolFlag{
-			Name:  "on-this-day",
+			Name:  "memories",
 			Usage: "Show media items that occurred on the current day in previous years.",
 			Value: true,
 		},
@@ -135,10 +134,6 @@ func SetupApp(Commit, Tag string) {
 			database.CreateDB(c)
 
 			scanner.SetScanInProgress(false)
-
-			if c.Dev {
-				go esbuild(c)
-			}
 
 			// initialize cache
 			cache := cache.New(-1, -1)
@@ -306,16 +301,4 @@ func SetupApp(Commit, Tag string) {
 		log.Fatal(err)
 	}
 
-}
-
-// esbuild bundles js and scss via esbuild in the background
-func esbuild(c Conf) {
-	c.Logger.Info("running esbuild")
-
-	cmd := exec.Command("node", "assets/esbuild-dev.config.mjs")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		log.Println("ERROR Running esbuild", err)
-	}
 }

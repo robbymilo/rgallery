@@ -1,13 +1,13 @@
-<div class="bg-gray-200 relative pt-14">
-  <div class="max-w-screen-xl px-4 py-8 mx-auto">
-    <div class="lg:mx-auto lg:grid lg:max-w-7xl lg:grid-cols-2 lg:items-start lg:gap-24 lg:px-4 relative z-1">
+<div class="relative bg-gray-200 pt-14">
+  <div class="mx-auto max-w-screen-xl px-4 py-8">
+    <div class="relative z-1 lg:mx-auto lg:grid lg:max-w-7xl lg:grid-cols-2 lg:items-start lg:gap-24 lg:px-4">
       <div
-        class="relative max-w-md px-4 mx-auto sm:max-w-3xl sm:px-6 lg:px-0 text-center sm:mb-6 lg:text-left lg:mb-0 mt-6"
+        class="relative mx-auto mt-6 max-w-md px-4 text-center sm:mb-6 sm:max-w-3xl sm:px-6 lg:mb-0 lg:px-0 lg:text-left"
       >
-        <h1 class="pb-2 text-3xl text-gray-800 md:text-4xl max-w-[400px] lg:max-w-[400px] sm:mx-auto lg:mx-0">
-          {{ .Description }}
+        <h1 class="max-w-[400px] pb-2 text-3xl text-gray-800 sm:mx-auto md:text-4xl lg:mx-0 lg:max-w-[400px]">
+          {{ .Params.lead.title }}
         </h1>
-        <p class="max-w-xl mx-auto mb-6 font-normal text-gray-900 lg:mx-0 xl:mb-2 md:text-lg xl:text-xl">
+        <p class="mx-auto mb-6 max-w-xl font-normal text-gray-900 md:text-lg lg:mx-0 xl:mb-2 xl:text-xl">
           {{ .Params.lead.content | page.RenderString }}
         </p>
         <p class="mt-8">
@@ -17,26 +17,22 @@
             target="_blank"
             rel="noreferrer nofollow"
             >Try the demo
-            <span class="inline-block px-1 m-auto">
+            <span class="m-auto inline-block px-1">
               {{ readFile "static/external-dark.svg" | safeHTML }}
             </span></a
           >
-          (User: <strong>demo</strong>, Password: <strong>demo</strong>)
+          <a class="btn btn-white-outline inline-flex text-white" href="{{ .Params.lead.install.link }}"
+            >{{ .Params.lead.install.text }}</a
+          >
         </p>
+        <p>(User: <strong class="font-mono">demo</strong>, Password: <strong class="font-mono">demo</strong>)</p>
       </div>
       <div class="relative sm:py-8 lg:py-0">
-        <div class="relative max-w-md px-4 py-6 mx-auto sm:max-w-3xl sm:px-6 lg:max-w-none lg:px-0">
-          <div class="bg-black relative z-1">
-            <img
-              data-srcset="{{ .Params.lead.image.srcset }}"
-              width="{{ .Params.lead.image.width }}"
-              height="{{ .Params.lead.image.height }}"
-              class="lazyload shadow-xl inset-0 object-cover w-full h-full rounded-lg"
-              alt="rgallery screenshot"
-              data-sizes="auto"
-            />
-            <div class="absolute inset-0 bg-indigo-300 mix-blend-multiply"></div>
-            <div class="absolute inset-0 bg-gradient-to-t from-indigo-600 opacity-80"></div>
+        <div class="relative mx-auto max-w-md px-4 py-6 sm:max-w-3xl sm:px-6 lg:max-w-none lg:px-0">
+          <div class="relative z-1 bg-black">
+            {{ with .Params.lead }}
+              {{ partial "get-image" (dict "src" .image "alt" .alt "hide_caption" true) }}
+            {{ end }}
           </div>
         </div>
       </div>

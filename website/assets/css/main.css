@@ -1,33 +1,37 @@
 @import 'tailwindcss';
-@import 'fonts/onest.css';
-@source "hugo_stats.json";
+@import 'fonts/inter.css';
+@source 'hugo_stats.json';
 
 @theme {
   --color-zinc: rgb(31, 37, 43);
 }
 
 body {
-  font-family: "Onest", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 400;
   font-style: normal;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  font-optical-sizing: auto;
+}
+
+html {
+  scroll-padding-top: 56px;
 }
 
 .main {
   h1 {
-    @apply text-4xl font-bold leading-none tracking-tight md:text-4xl xl:text-4xl;
+    @apply leading-none font-bold tracking-tight md:text-4xl xl:text-4xl;
   }
 
   h2 {
-    @apply text-3xl font-semibold mb-3 tracking-tight;
+    @apply mb-3 text-3xl font-semibold tracking-tight;
   }
 
   h3 {
-    @apply text-2xl font-semibold mb-2 tracking-tight;
+    @apply mb-2 text-2xl font-semibold tracking-tight;
   }
 
   h4 {
-    @apply text-xl font-semibold mb-1 tracking-tight;
+    @apply mb-1 text-xl font-semibold tracking-tight;
   }
 
   h5 {
@@ -40,17 +44,15 @@ body {
 
   ul,
   ol {
-    @apply mb-4 pl-4 list-disc;
+    @apply mb-4 list-disc pl-4;
   }
 
   ol {
     @apply list-decimal;
   }
 
-
-
   blockquote {
-    @apply px-4 py-2 border-l-4 mb-4;
+    @apply mb-4 border-l-4 px-4 py-2;
     border-color: var(--color-green-500);
     background-color: var(--color-green-50);
 
@@ -60,12 +62,12 @@ body {
   }
 
   table {
-    @apply w-full border-collapse mb-4;
+    @apply mb-4 w-full border-collapse;
   }
 
   th,
   td {
-    @apply p-2 border;
+    @apply border p-2;
     border-color: var(--color-zinc);
   }
 
@@ -87,26 +89,27 @@ body {
     @apply underline;
   }
 
+  .caption,
   figcaption {
-    @apply text-sm my-1;
+    @apply my-1 text-sm;
   }
 }
 
 .section-docs {
   h1 {
-    @apply text-4xl font-semibold leading-none pb-4;
+    @apply pb-4 text-4xl leading-none font-semibold;
   }
 
   h2 {
-    @apply text-3xl font-semibold tracking-normal mt-6 pb-3;
+    @apply mt-6 pb-3 text-3xl font-semibold tracking-normal;
   }
 
   h3 {
-    @apply text-2xl font-semibold tracking-normal mt-6 pb-2;
+    @apply mt-6 pb-2 text-2xl font-semibold tracking-normal;
   }
 
   h4 {
-    @apply text-xl font-semibold tracking-normal mt-6 pb-1;
+    @apply mt-6 pb-1 text-xl font-semibold tracking-normal;
   }
 
   h5 {
@@ -119,7 +122,7 @@ body {
 }
 
 .btn {
-  @apply font-semibold py-2 px-4 mr-2 rounded;
+  @apply mr-2 rounded px-4 py-2 font-semibold;
 }
 .btn-blue {
   @apply bg-blue-500 text-white;
@@ -132,6 +135,14 @@ body {
 }
 .btn-white:hover {
   @apply bg-gray-200;
+}
+
+.btn-white-outline {
+  @apply border border-white text-white;
+}
+
+.btn-white-outline:hover {
+  @apply bg-white text-black;
 }
 
 .main .btn {
@@ -186,8 +197,8 @@ body {
 }
 
 .menu li.menu--current button:first-of-type:after {
-  stroke: white;
   opacity: 1;
+  stroke: white;
 }
 .menu li.menu--current a:first-of-type {
   opacity: 1;

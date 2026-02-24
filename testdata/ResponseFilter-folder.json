@@ -1,37 +1,22 @@
 {
-  "segment": [
+  "meta": {
+    "total": 1,
+    "pagesize": 1000,
+    "nextCursor": ""
+  },
+  "timeline": [
     {
-      "sectionId": "2017-06",
-      "totalItems": 1,
-      "segments": [
-        {
-          "s": "2017-06-24",
-          "i": [
-            [
-              7374,
-              4924,
-              651935749,
-              "#72A5D6"
-            ]
-          ]
-        }
-      ]
+      "date": "2017-06-24",
+      "count": 1
     }
   ],
-  "total": 1,
-  "pagesize": -1,
-  "page": 1,
-  "orderby": "date",
-  "direction": "desc",
-  "filter": {
-    "camera": "",
-    "lens": "",
-    "term": "",
-    "type": "",
-    "rating": 0,
-    "subject": "",
-    "folder": "2017/20170624-idaho",
-    "software": "",
-    "focalLength35": 0
-  }
+  "photos": [
+    {
+      "id": 651935749,
+      "w": 7374,
+      "h": 4924,
+      "c": "#72A5D6",
+      "d": "2017-06-24"
+    }
+  ]
 }

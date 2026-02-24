@@ -1,0 +1,127 @@
+@import '../../pkg/fonts/inter.css';
+
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-charcoal-50: oklch(0.98 0.0198 286.03);
+  --color-charcoal-100: oklch(0.894 0.018 286.03);
+  --color-charcoal-200: oklch(0.808 0.0163 286.03);
+  --color-charcoal-300: oklch(0.722 0.0146 286.03);
+  --color-charcoal-400: oklch(0.636 0.0128 286.03);
+  --color-charcoal-500: oklch(0.55 0.0111 286.03);
+  --color-charcoal-600: oklch(0.464 0.0094 286.03);
+  --color-charcoal-700: oklch(0.378 0.0076 286.03);
+  --color-charcoal-800: oklch(0.292 0.0059 286.03);
+  --color-charcoal-900: oklch(0.206 0.0042 286.03);
+  --color-charcoal-950: oklch(0.12 0.0024 286.03);
+  --color-primary-50: oklch(0.97 0.03 246.5);
+  --color-primary-100: oklch(0.93 0.04 246.5);
+  --color-primary-200: oklch(0.88 0.06 246.5);
+  --color-primary-300: oklch(0.8 0.09 246.5);
+  --color-primary-400: oklch(0.72 0.13 246.5);
+  --color-primary-500: oklch(0.646 0.169 246.5); /* #0074d9 */
+  --color-primary-600: oklch(0.58 0.16 246.5);
+  --color-primary-700: oklch(0.5 0.14 246.5);
+  --color-primary-800: oklch(0.4 0.11 246.5);
+  --color-primary-900: oklch(0.3 0.08 246.5);
+  --color-primary-950: oklch(0.2 0.05 246.5);
+}
+
+.spinner {
+  transform-origin: center;
+  animation: spinner 0.75s infinite linear;
+}
+
+@keyframes spinner {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.leaflet-pane {
+  z-index: 30;
+}
+
+button {
+  @apply cursor-pointer;
+}
+
+@layer utilities {
+  .animate-bell {
+    animation: bell-pop 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @keyframes bell-pop {
+    0% {
+      transform: translateY(0) scale(1);
+    }
+    20% {
+      transform: translateY(-3px) scale(1.05);
+    }
+    50% {
+      transform: translateY(0) scale(0.98);
+    }
+    70% {
+      transform: translateY(-1px) scale(1.02);
+    }
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+  .animate-badge {
+    animation: badge-pop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @keyframes badge-pop {
+    0% {
+      transform: scale(0.6);
+      opacity: 0.6;
+    }
+    40% {
+      transform: scale(1.3);
+      opacity: 1;
+    }
+    70% {
+      transform: scale(0.95);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+}
+
+@layer components {
+  .nav-link {
+    @apply text-charcoal-300 hover:bg-charcoal-700 flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors hover:text-white;
+  }
+
+  .nav-link-active {
+    @apply bg-charcoal-700 text-white;
+  }
+
+  .mobile-nav-link {
+    @apply text-charcoal-300 hover:bg-charcoal-800 flex items-center gap-2 rounded-md px-3 py-2 text-base font-medium;
+  }
+
+  .mobile-nav-link-active {
+    @apply bg-charcoal-700 text-white;
+  }
+
+  .mobile-nav-link-primary-active {
+    @apply bg-primary-500/10 text-primary-400;
+  }
+}
+
+h1 {
+  @apply text-2xl font-bold text-gray-900 dark:text-white;
+}
+
+h1.h1-small {
+  @apply text-lg font-medium tracking-tight whitespace-nowrap text-neutral-900 dark:text-neutral-200;
+}
+
+button {
+  @apply cursor-pointer;
+}

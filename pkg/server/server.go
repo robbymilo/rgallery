@@ -10,6 +10,7 @@ import (
 
 type FilterParams = types.FilterParams
 type ResponseAdmin = types.ResponseAdmin
+type ResponseProfile = types.ResponseProfile
 
 func DecodeURL(s string) (string, error) {
 	decoded, err := url.QueryUnescape(s)

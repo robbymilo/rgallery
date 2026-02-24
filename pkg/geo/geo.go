@@ -23,22 +23,23 @@ func NewGeoHandler(c Conf) (*Handlers, error) {
 	var r *rgeo.Rgeo
 	var err error
 
-	if c.LocationDataset == "Provinces10" {
+	switch c.LocationDataset {
+	case "Provinces10":
 		r, err = rgeo.New(rgeo.Provinces10)
 		if err != nil {
 			return nil, err
 		}
-	} else if c.LocationDataset == "Countries110" {
+	case "Countries110":
 		r, err = rgeo.New(rgeo.Countries110)
 		if err != nil {
 			return nil, err
 		}
-	} else if c.LocationDataset == "Countries10" {
+	case "Countries10":
 		r, err = rgeo.New(rgeo.Countries10)
 		if err != nil {
 			return nil, err
 		}
-	} else if c.LocationDataset == "Cities10" {
+	case "Cities10":
 		r, err = rgeo.New(rgeo.Cities10)
 		if err != nil {
 			return nil, err
@@ -71,7 +72,11 @@ func ReverseGeocode(lon, lat float64, c Conf) (Location, error) {
 	if err != nil {
 		return Location{}, err
 	}
-	defer response.Body.Close()
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			c.Logger.Error("response.Body.Close error", "err", err)
+		}
+	}()
 
 	jsonData, err := io.ReadAll(response.Body)
 	if err != nil {

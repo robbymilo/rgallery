@@ -29,7 +29,11 @@ func GetFolders(params FilterParams, group string, pageSize, offset int, c Conf)
 	if err != nil {
 		return nil, fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("pool.Close error:", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {
@@ -213,7 +217,11 @@ func GetTotalFolders(c Conf) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("pool.Close error:", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {

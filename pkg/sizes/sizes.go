@@ -20,15 +20,15 @@ func Srcset(hash uint32, width int, path string, c Conf) template.Srcset {
 	for _, size := range GetSizes() {
 		suffix := ", "
 		if size <= width {
-			srcset = fmt.Sprintf(`%s/img/%d/%d %dw%s`, srcset, hash, size, size, suffix)
+			srcset = fmt.Sprintf(`%s/api/img/%d/%d %dw%s`, srcset, hash, size, size, suffix)
 		} else if !final {
 			final = true
-			srcset = fmt.Sprintf(`%s/img/%d/%d %dw%s`, srcset, hash, width, width, suffix)
+			srcset = fmt.Sprintf(`%s/api/img/%d/%d %dw%s`, srcset, hash, width, width, suffix)
 		}
 	}
 
 	if c.IncludeOriginals {
-		url := template.HTMLEscapeString(filepath.Join("/media-originals", path))
+		url := template.HTMLEscapeString(filepath.Join("/api/media-originals", path))
 		srcset = fmt.Sprintf(`%s%s %dw`, srcset, url, width)
 	}
 

@@ -239,7 +239,7 @@
     "date": "2021-07-09T00:00:00Z",
     "modified": "2023-11-21T20:44:53.923Z",
     "folder": "misc",
-    "srcset": "/img/4119775194/200 200w, /img/4119775194/400 400w, /img/4119775194/800 800w, /img/4119775194/1024 1024w",
+    "srcset": "/api/img/4119775194/200 200w, /api/img/4119775194/400 400w, /api/img/4119775194/800 800w, /api/img/4119775194/1024 1024w",
     "rating": 0,
     "shutterspeed": "1/500",
     "aperture": 10,
@@ -261,7 +261,5 @@
     "offset": 0
   },
   "previous": [],
-  "next": [],
-  "collection": "tag",
-  "slug": "#californiawildfires"
+  "next": []
 }

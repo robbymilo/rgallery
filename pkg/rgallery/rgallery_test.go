@@ -24,7 +24,6 @@ import (
 type ResponseMedia = types.ResponseMedia
 type ResponseTags = types.ResponseTags
 type ResponseFolders = types.ResponseFolders
-type ResponseFilter = types.ResponseFilter
 type ResponseGear = types.ResponseGear
 
 var c = Conf{
@@ -37,7 +36,8 @@ var c = Conf{
 	ResizeService:    "",
 	LocationDataset:  "Provinces10",
 	Logger:           slog.New(slog.NewTextHandler(os.Stdout, nil)),
-	OnThisDay:        false,
+	Memories:         false,
+	TileServer:       `/api/tiles/{z}/{x}/{y}.png`,
 }
 
 var ca = cache.New(-1, -1)
@@ -88,55 +88,46 @@ func TestEndpoints(t *testing.T) {
 
 	_, _ = scanner.Scan("default", c, ca)
 
-	testResponse(t, "/?format=json", "../../testdata/ResponseFilter.json")
+	testResponse(t, "/api/timeline", "../../testdata/ResponseFilter.json")
+	testResponse(t, "/api/timeline", "../../testdata/ResponseFilter.json")
+	testResponse(t, "/api/timeline?orderby=modified", "../../testdata/ResponseFilter-modified.json")
+	testResponse(t, "/api/timeline?orderby=modified&direction=asc", "../../testdata/ResponseFilter-modified-asc.json")
+	testResponse(t, "/api/timeline?term=copp", "../../testdata/ResponseFilter-term.json")
+	testResponse(t, "/api/timeline?term=su+špa", "../../testdata/ResponseFilter-term-1.json")
+	testResponse(t, "/api/timeline?camera=NIKON%20D800", "../../testdata/ResponseFilter-camera.json")
+	testResponse(t, "/api/timeline?lens=AF-S%20Nikkor%2050mm%20f%2f1.8G", "../../testdata/ResponseFilter-lens.json")
+	testResponse(t, "/api/timeline?lens=123", "../../testdata/ResponseFilter-lens-1.json")
+	testResponse(t, "/api/timeline?lens=Nikon Ai-s 105mm f%2f2.5", "../../testdata/ResponseFilter-lens-2.json")
+	testResponse(t, "/api/timeline?folder=2017/20170624-idaho", "../../testdata/ResponseFilter-folder.json")
+	testResponse(t, "/api/timeline?tag=idaho", "../../testdata/ResponseFilter-tag.json")
+	testResponse(t, "/api/memories", "../../testdata/ResponseFilter-memories.json")
 
-	testResponse(t, "/?format=json", "../../testdata/ResponseFilter.json")
-	testResponse(t, "/?format=json&orderby=modified", "../../testdata/ResponseFilter-modified.json")
-	testResponse(t, "/?format=json&orderby=modified&direction=asc", "../../testdata/ResponseFilter-modified-asc.json")
-	testResponse(t, "/?format=json&term=copp", "../../testdata/ResponseFilter-term.json")
-	testResponse(t, "/?format=json&term=su+špa", "../../testdata/ResponseFilter-term-1.json")
-	testResponse(t, "/?format=json&camera=NIKON%20D800", "../../testdata/ResponseFilter-camera.json")
-	testResponse(t, "/?format=json&lens=AF-S%20Nikkor%2050mm%20f%2f1.8G", "../../testdata/ResponseFilter-lens.json")
-	testResponse(t, "/?format=json&lens=123", "../../testdata/ResponseFilter-lens-1.json")
-	testResponse(t, "/?format=json&lens=Nikon Ai-s 105mm f%2f2.5", "../../testdata/ResponseFilter-lens-2.json")
-	testResponse(t, "/?format=json&folder=2017/20170624-idaho", "../../testdata/ResponseFilter-folder.json")
-	testResponse(t, "/?format=json&tag=idaho", "../../testdata/ResponseFilter-tag.json")
-	testResponse(t, "/onthisday?format=json", "../../testdata/ResponseFilter-onthisday.json")
-
-	testResponse(t, "/media/651935749?format=json", "../../testdata/ResponseImage-0.json")
-	testResponse(t, "/media/3455659031?format=json", "../../testdata/ResponseImage-1.json")
-	testResponse(t, "/media/4119775194?format=json", "../../testdata/ResponseImage-2.json")
-	testResponse(t, "/media/651935749/in/folder/2017/20170624-idaho?format=json", "../../testdata/ResponseImage-folder.json")
-	testResponse(t, "/media/651935749/in/tag/idaho?format=json", "../../testdata/ResponseImage-tag.json")
-	testResponse(t, "/media/4119775194/in/tag/%40acconfb?format=json", "../../testdata/ResponseImage-tag-acc.json")
-	testResponse(t, "/media/4119775194/in/tag/%23californiawildfires?format=json", "../../testdata/ResponseImage-tag-cal.json")
-	testResponse(t, "/media/651935749/in/favorites?format=json", "../../testdata/ResponseImage-favorites.json")
-
+	testResponse(t, "/api/media/651935749", "../../testdata/ResponseImage-0.json")
+	testResponse(t, "/api/media/3455659031", "../../testdata/ResponseImage-1.json")
+	testResponse(t, "/api/media/4119775194", "../../testdata/ResponseImage-2.json")
+	testResponse(t, "/api/media/651935749?folder=2017/20170624-idaho", "../../testdata/ResponseImage-folder.json")
+	testResponse(t, "/api/media/651935749?tag=idaho", "../../testdata/ResponseImage-tag.json")
+	testResponse(t, "/api/media/4119775194?tag=%40acconfb", "../../testdata/ResponseImage-tag-acc.json")
+	testResponse(t, "/api/media/4119775194?tag=%23californiawildfires", "../../testdata/ResponseImage-tag-cal.json")
+	testResponse(t, "/api/media/651935749?rating=5", "../../testdata/ResponseImage-favorites.json")
 	// prev/next responses
-	testResponse(t, "/media/3455659031?camera=NIKON D800&format=json", "../../testdata/ResponseImage-camera.json")
-	testResponse(t, "/media/651935749?lens=AF-S Nikkor 50mm f%2f1.8G&format=json", "../../testdata/ResponseImage-lens.json")
-	testResponse(t, "/media/651935749?lens=123&format=json", "../../testdata/ResponseImage-lens.json")
-	testResponse(t, "/media/525791494?lens=Nikon Ai-s 105mm f%2f2.5&format=json", "../../testdata/ResponseImage-lens-1.json")
-	testResponse(t, "/media/264898052?focallength35=50&format=json", "../../testdata/ResponseImage-focallength35.json")
-	testResponse(t, "/media/3216513272?software=darktable 4.4.2&format=json", "../../testdata/ResponseImage-software.json")
-	testResponse(t, "/media/1129346697?term=bogus&format=json", "../../testdata/ResponseImage-term.json")
+	testResponse(t, "/api/media/3455659031?camera=NIKON D800&format=json", "../../testdata/ResponseImage-camera.json")
+	testResponse(t, "/api/media/651935749?lens=AF-S Nikkor 50mm f%2f1.8G&format=json", "../../testdata/ResponseImage-lens.json")
+	testResponse(t, "/api/media/651935749?lens=123&format=json", "../../testdata/ResponseImage-lens.json")
+	testResponse(t, "/api/media/525791494?lens=Nikon Ai-s 105mm f%2f2.5&format=json", "../../testdata/ResponseImage-lens-1.json")
+	testResponse(t, "/api/media/264898052?focallength35=50&format=json", "../../testdata/ResponseImage-focallength35.json")
+	testResponse(t, "/api/media/3216513272?software=darktable 4.4.2&format=json", "../../testdata/ResponseImage-software.json")
+	testResponse(t, "/api/media/1129346697?term=bogus&format=json", "../../testdata/ResponseImage-term.json")
 
-	testResponse(t, "/favorites?format=json", "../../testdata/ResponseImages-favorites.json")
+	testResponse(t, "/api/folders", "../../testdata/ResponseFolders.json")
 
-	testResponse(t, "/folders?format=json", "../../testdata/ResponseFolders.json")
-	testResponse(t, "/folder/2019/20190330-sawtooths?format=json", "../../testdata/ResponseFolder.json")
+	testResponse(t, "/api/tags", "../../testdata/ResponseTags.json")
 
-	testResponse(t, "/tags?format=json", "../../testdata/ResponseTags.json")
-	testResponse(t, "/tag/idaho?format=json", "../../testdata/ResponseTag.json")
-	testResponse(t, "/tag/%40acconfb?format=json", "../../testdata/ResponseTag-acc.json")
-	testResponse(t, "/tag/%23californiawildfires?format=json", "../../testdata/ResponseTag-cal.json")
+	testResponse(t, "/api/gear", "../../testdata/ResponseGear.json")
 
-	testResponse(t, "/gear?format=json", "../../testdata/ResponseGear.json")
-	testResponse(t, "/map?format=json", "../../testdata/ResponseMap.json")
+	testResponse(t, "/api/map", "../../testdata/ResponseMap.json")
 
-	testStatusCode(t, "/media/123", 404)
-	testStatusCode(t, "/folder/123", 404)
-	testStatusCode(t, "/tag/123", 404)
+	testStatusCode(t, "/api/media/123", 404)
 
 	// test thumbnail generation
 	testThumbnail(t, "3455659031", "3000")
@@ -164,7 +155,11 @@ func testResponse(t *testing.T, path string, json_relative_path string) {
 		fmt.Println(err)
 	}
 
-	defer json_file.Close()
+	defer func() {
+		if err := json_file.Close(); err != nil {
+			t.Log("json_file.Close error:", err)
+		}
+	}()
 
 	json_byte, err := io.ReadAll(json_file)
 	if err != nil {
@@ -188,7 +183,11 @@ func testStatusCode(t *testing.T, path string, statusCode int) {
 
 	router(w, r, ca)
 	res := w.Result()
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			t.Log("res.Body.Close error:", err)
+		}
+	}()
 
 	assert.EqualValues(t, statusCode, res.StatusCode, "they should be equal")
 
@@ -218,6 +217,15 @@ func setModTime(test_path string) {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	// confirm mod time set
+	info, err := os.Stat(test_path)
+	if err != nil {
+		fmt.Println(err)
+	}
+	modTime := info.ModTime()
+
+	fmt.Println("test_path", "modTime", modTime)
 
 }
 

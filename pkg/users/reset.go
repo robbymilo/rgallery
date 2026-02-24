@@ -14,7 +14,11 @@ func ResetUsers(c Conf) error {
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 
 	const deleteStmt = "DELETE FROM users;"
 	err = sqlitex.Execute(conn, deleteStmt, nil)

@@ -45,7 +45,7 @@ func Auth(c Conf) func(http.Handler) http.Handler {
 					c.Logger.Info("incorrect api_key supplied")
 
 					// no existing api key
-					http.Redirect(w, r, "/signin", http.StatusFound)
+					w.WriteHeader(http.StatusUnauthorized)
 					return
 
 				} else {
@@ -53,7 +53,7 @@ func Auth(c Conf) func(http.Handler) http.Handler {
 					cookie, err := r.Cookie("session")
 					if err != nil {
 						if err == http.ErrNoCookie {
-							http.Redirect(w, r, "/signin", http.StatusFound)
+							w.WriteHeader(http.StatusUnauthorized)
 							return
 						}
 						c.Logger.Error("cookie error", "error", err)
@@ -65,13 +65,13 @@ func Auth(c Conf) func(http.Handler) http.Handler {
 
 						session, exists := sessions.GetSession(token)
 						if !exists {
-							http.Redirect(w, r, "/signin", http.StatusFound)
+							w.WriteHeader(http.StatusUnauthorized)
 							return
 						}
 
 						if session.IsExpired() {
 							sessions.DeleteSession(token, c)
-							http.Redirect(w, r, "/signin", http.StatusFound)
+							w.WriteHeader(http.StatusUnauthorized)
 							return
 						}
 

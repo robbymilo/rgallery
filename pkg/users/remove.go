@@ -41,7 +41,11 @@ func RemoveUserConnect(creds *UserCredentials, c Conf) error {
 	if err != nil {
 		return fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("error closing pool: %v", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {

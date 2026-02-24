@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -27,7 +26,7 @@ func ServeThumbnail(w http.ResponseWriter, r *http.Request) {
 	hash := GetHash(h)
 	size, err := strconv.Atoi(chi.URLParam(r, "size"))
 	if err != nil {
-		fmt.Println("error reading thumb size", err)
+		c.Logger.Error("error reading thumb size", "err", err)
 	}
 
 	// get image from the handler
@@ -37,12 +36,12 @@ func ServeThumbnail(w http.ResponseWriter, r *http.Request) {
 		// send saved thumb if it exists
 		file, err = os.ReadFile(p)
 		if err != nil {
-			fmt.Println("error reading saved thumb:", err)
+			c.Logger.Error("error reading saved thumb:", "err", err)
 		}
 
 		info, err := os.Stat(p)
 		if err != nil {
-			fmt.Println("error stating saved thumb:", err)
+			c.Logger.Error("error stating saved thumb:", "err", err)
 		}
 		modTime = info.ModTime()
 	} else {
@@ -55,7 +54,7 @@ func ServeThumbnail(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err = w.Write([]byte("404\n"))
 		if err != nil {
-			fmt.Println("error writing thumbnail 404 response:", err)
+			c.Logger.Error("error writing thumbnail 404 response:", "err", err)
 		}
 		return
 	}

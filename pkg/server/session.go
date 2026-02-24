@@ -45,7 +45,10 @@ func SignIn(w http.ResponseWriter, r *http.Request, c Conf) error {
 
 	// compare password with hash
 	if err = bcrypt.CompareHashAndPassword([]byte(storedCreds.Password), []byte(creds.Password)); err != nil {
-		http.Redirect(w, r, errorUrl.String(), http.StatusFound)
+		w.WriteHeader(http.StatusUnauthorized)
+		if _, err := w.Write([]byte(`Invalid credentials`)); err != nil {
+			c.Logger.Error("failed to write response: %v", "err", err)
+		}
 		return fmt.Errorf("error comparing supplied password with hash: %v", err)
 	}
 
@@ -54,7 +57,10 @@ func SignIn(w http.ResponseWriter, r *http.Request, c Conf) error {
 
 	err = sessions.CreateSession(storedCreds.Username, storedCreds.Role, token, expires, c)
 	if err != nil {
-		http.Redirect(w, r, errorUrl.String(), http.StatusFound)
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`Success`)); err != nil {
+			c.Logger.Error("failed to write response: %v", "err", err)
+		}
 		return fmt.Errorf("error generating session: %v", err)
 	}
 
@@ -90,21 +96,23 @@ func ServeLogOut(w http.ResponseWriter, r *http.Request) {
 
 	// set empty cookie
 	http.SetCookie(w, &http.Cookie{
-		Name:    "session",
-		Value:   "",
-		Expires: time.Now(),
+		Name:   "session",
+		Value:  "",
+		MaxAge: -1,
+		Path:   "/",
 	})
 
-	// user added
-	http.Redirect(w, r, "/", http.StatusFound)
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write([]byte(`Logged out`)); err != nil {
+		c.Logger.Error("failed to write response: %v", "err", err)
+	}
 
 }
 
 // ServeSignIn serves the sign in page.
 func ServeSignIn(w http.ResponseWriter, r *http.Request) {
 	response := ResponsAuth{
-		HideNavFooter: true,
-		Section:       "auth",
+		Section: "auth",
 	}
 	_ = render.Render(w, r, response, "signin")
 }

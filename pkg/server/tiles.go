@@ -50,7 +50,11 @@ func ServeTiles(w http.ResponseWriter, r *http.Request, c Conf) {
 		return
 
 	}
-	defer tmpFile.Close()
+	defer func() {
+		if err := tmpFile.Close(); err != nil {
+			c.Logger.Error("tmpFile.Close error", "err", err)
+		}
+	}()
 
 	if _, err := tmpFile.Write(content); err != nil {
 		http.Error(w, "server error", http.StatusBadRequest)

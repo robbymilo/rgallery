@@ -23,7 +23,7 @@ func ServeTags(w http.ResponseWriter, r *http.Request) {
 
 	cacheContext := r.Context().Value(CacheKey{}).(map[string]interface{})
 	cacheHandle := cacheContext["cache"].(*cache.Cache)
-	cacheMap, ok := cacheContext["response"].(ResponseFilter)
+	cacheMap, ok := cacheContext["response"].(*ResponseTags)
 	if ok {
 		err := render.Render(w, r, cacheMap, "index")
 		if err != nil {
@@ -42,16 +42,14 @@ func ServeTags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := ResponseTags{
-		Tags:          tags,
-		Title:         "Tags",
-		OrderBy:       "date",
-		Page:          params.Page,
-		PageSize:      -1,
-		Total:         total,
-		Direction:     "asc",
-		Section:       "tags",
-		HideNavFooter: false,
-		Meta:          c.Meta,
+		Tags:      tags,
+		OrderBy:   "date",
+		Page:      params.Page,
+		PageSize:  -1,
+		Total:     total,
+		Direction: "asc",
+		Section:   "tags",
+		Meta:      c.Meta,
 	}
 
 	err = render.Render(w, r, response, "tags")

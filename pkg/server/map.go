@@ -19,14 +19,13 @@ func ServeMap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := ResponseMap{
-		Section:       "map",
-		MapItems:      mapItems,
-		HideNavFooter: false,
-		TileServer:    c.TileServer,
-		Meta:          c.Meta,
+		Section:    "map",
+		MapItems:   mapItems,
+		TileServer: c.TileServer,
+		Meta:       c.Meta,
 	}
 
-	err = render.Render(w, r, response, "map")
+	err = render.RenderJson(w, r, response)
 	if err != nil {
 		c.Logger.Error("error rendering map response", "error", err)
 	}

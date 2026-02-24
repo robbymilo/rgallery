@@ -3,9 +3,9 @@
     {{ with site.GetPage "/docs" }}
       <div class="menu--group">
         <li
-          class="font-bold {{ if eq $.RelPermalink .RelPermalink }}
+          class="{{ if eq $.RelPermalink .RelPermalink }}
             menu--current
-          {{ end }}"
+          {{ end }} font-bold"
         >
           <a class="menu-a" href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>
         </li>

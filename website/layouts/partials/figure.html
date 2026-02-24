@@ -1,4 +1,4 @@
-<figure class="mb-4">
+<figure class="{{ or .class `mb-4` }}">
   <img
     class="lazyload"
     data-srcset="{{ .srcset }}"
@@ -15,6 +15,8 @@
       {{ if .height }}height="{{ .height }}"{{ end }}
   /></noscript>
   {{ with .caption }}
-    <figcaption>{{ . }}</figcaption>
+    {{ if ne $.hide_caption true }}
+      <figcaption>{{ . }}</figcaption>
+    {{ end }}
   {{ end }}
 </figure>

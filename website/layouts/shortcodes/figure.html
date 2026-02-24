@@ -1,11 +1,6 @@
-{{ $src := .Get "src" }}
-{{ $srcset := .Get "srcset" }}
-{{ $caption := .Get "caption" }}
-{{ $alt := .Get "alt" }}
-{{ $width := .Get "width" }}
-{{ $height := .Get "height" }}
-
-{{ $image := .Get "image" }}
-{{ $caption := .Get "caption" }}
-
-{{ partial "figure" (dict "src" $src "srcset" $srcset "alt" $alt "width" $width "height" $height "caption" $caption "image" $image "caption" $caption) }}
+{{ partial "get-image" (dict
+  "src" (.Get "src")
+  "alt" (.Get "alt")
+  "caption" (.Get "caption")
+  )
+}}

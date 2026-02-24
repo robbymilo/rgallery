@@ -1,37 +1,22 @@
 {
-  "segment": [
+  "meta": {
+    "total": 1,
+    "pagesize": 1000,
+    "nextCursor": ""
+  },
+  "timeline": [
     {
-      "sectionId": "2022-02",
-      "totalItems": 1,
-      "segments": [
-        {
-          "s": "2022-02-08",
-          "i": [
-            [
-              5951,
-              3903,
-              525791494,
-              "#98AEC0"
-            ]
-          ]
-        }
-      ]
+      "date": "2022-02-08",
+      "count": 1
     }
   ],
-  "total": 1,
-  "pagesize": -1,
-  "page": 1,
-  "orderby": "date",
-  "direction": "desc",
-  "filter": {
-    "camera": "",
-    "lens": "",
-    "term": "su špa",
-    "type": "",
-    "rating": 0,
-    "subject": "",
-    "folder": "",
-    "software": "",
-    "focalLength35": 0
-  }
+  "photos": [
+    {
+      "id": 525791494,
+      "w": 5951,
+      "h": 3903,
+      "c": "#98AEC0",
+      "d": "2022-02-08"
+    }
+  ]
 }

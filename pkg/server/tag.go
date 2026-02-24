@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -38,23 +37,22 @@ func ServeTag(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte("404\n"))
 		if err != nil {
-			fmt.Println(err)
+			c.Logger.Error("error writing 404 response:", "err", err)
 		}
 		return
 	}
 
 	response := ResponseMediaItems{
-		MediaItems:    media,
-		Title:         title,
-		Slug:          tag,
-		OrderBy:       "date",
-		Page:          params.Page,
-		PageSize:      pageSize,
-		Total:         total,
-		Direction:     params.Direction,
-		Collection:    "tag",
-		Section:       "tags",
-		HideNavFooter: false,
+		MediaItems: media,
+		Title:      title,
+		Slug:       tag,
+		OrderBy:    "date",
+		Page:       params.Page,
+		PageSize:   pageSize,
+		Total:      total,
+		Direction:  params.Direction,
+		Collection: "tag",
+		Section:    "tags",
 	}
 
 	err = render.Render(w, r, response, "images")

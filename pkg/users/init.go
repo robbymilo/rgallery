@@ -14,7 +14,11 @@ func InitUser(c Conf) error {
 	if err != nil {
 		return fmt.Errorf("error opening sqlite db: %w", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			c.Logger.Error("conn.Close error", "err", err)
+		}
+	}()
 
 	// check if admin user already exists
 	stmt, err := conn.Prepare("SELECT 1 FROM users LIMIT 1")

@@ -1,5 +1,5 @@
 {{ define "main" }}
-  <div x-data="{ open: false }" class="max-w-7xl mx-auto p-5 relative pt-18">
+  <div x-data="{ open: false }" class="relative mx-auto max-w-7xl p-5 pt-18">
     <button
       type="button"
       class="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-700 hover:text-white focus:ring-2 focus:ring-white focus:outline-hidden focus:ring-inset sm:hidden"
@@ -10,7 +10,7 @@
       <span class="absolute -inset-0.5"></span>
       <span class="sr-only">Open main menu</span>
       <svg
-        class="w-6 h-6"
+        class="h-6 w-6"
         aria-hidden="true"
         fill="currentColor"
         viewBox="0 0 20 20"
@@ -40,16 +40,16 @@
 
     <aside
       id="default-sidebar"
-      class="fixed top-14 left-0 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0 z-3"
+      class="fixed top-[40px] left-0 z-3 h-screen w-64 -translate-x-full transition-transform sm:translate-x-0"
       :class="{ 'translate-x-0': open, '-translate-x-full': !open }"
       aria-label="Sidebar"
     >
-      <div class="h-full sticky top-0 px-3 py-4 bg-gray-700">
+      <div class="sticky top-0 h-full bg-gray-700 px-3 py-4">
         {{ partial "menu" . }}
       </div>
     </aside>
 
-    <div class="max-w-4xl p-2 md:px-12 sm:ml-64 min-h-screen" @click="open = false">
+    <div class="min-h-screen max-w-4xl p-2 sm:ml-64 md:px-12" @click="open = false">
       <div class="pb-4">
         {{ partial "breadcrumb" . }}
       </div>

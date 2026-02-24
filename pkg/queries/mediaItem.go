@@ -19,7 +19,11 @@ func GetSingleMediaItem(hash uint32, c Conf) (Media, error) {
 	if err != nil {
 		return Media{}, fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("error closing pool", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {

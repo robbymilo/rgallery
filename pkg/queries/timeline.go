@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"sort"
+	"strconv"
 	"strings"
-	"time"
 
 	_ "modernc.org/sqlite"
 	"zombiezen.com/go/sqlite"
@@ -17,74 +16,44 @@ import (
 )
 
 type RawMinimalMedia = types.RawMinimalMedia
-type Segment = types.Segment
-type SegmentMedia = types.SegmentMedia
-type SegmentGroup = types.SegmentGroup
-type ResponseSegment = types.ResponseSegment
 type GearItem = types.GearItem
 type GearItems = types.GearItems
 type Conf = types.Conf
 type PrevNext = types.PrevNext
 
-// GetTimeline returns all media items in a timeline format.
-func GetTimeline(params *FilterParams, c Conf) (ResponseSegment, int, error) {
-	mediaItems, err := getTimelineItems(params, c)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error getting timeline items: %v", err)
-	}
-
-	mediaByDay, err := groupMediaItemsByDay(params, mediaItems)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error grouping mediaItems by day: %v", err)
-	}
-
-	mediaByMonth := make(map[string][]Segment)
-	for i := range mediaByDay {
-		t, err := time.Parse("2006-01-02", mediaByDay[i].SegmentId)
-		if err != nil {
-			return nil, 0, fmt.Errorf("error parsing time for mediaByDay: %v", err)
-		}
-		month := t.Format("2006-01")
-		mediaByMonth[month] = append(mediaByMonth[month], mediaByDay[i])
-	}
-
-	var final ResponseSegment
-	for k, v := range mediaByMonth {
-		days := v
-		total := 0
-		for i := range v {
-			total += len(v[i].Media)
-		}
-
-		// sort days
-		sort.Slice(days, func(i, j int) bool {
-			if params.Direction == "desc" {
-				return days[i].SegmentId > days[j].SegmentId
-			}
-			return days[i].SegmentId < days[j].SegmentId
-		})
-
-		segmentGroup := &SegmentGroup{
-			SectionId: &k,
-			Total:     &total,
-			Segments:  &days,
-		}
-		final = append(final, segmentGroup)
-	}
-
-	// sort months
-	sort.Slice(final, func(i, j int) bool {
-		if params.Direction == "desc" {
-			return *final[i].SectionId > *final[j].SectionId
-		}
-		return *final[i].SectionId < *final[j].SectionId
-	})
-
-	return final, len(mediaItems), nil
+type TimelineResponse struct {
+	Meta     Meta           `json:"meta"`
+	Timeline []TimelineItem `json:"timeline"`
+	Photos   []Photo        `json:"photos"`
 }
 
-// getTimelineItems returns all filtered media items from the db.
-func getTimelineItems(params *FilterParams, c Conf) ([]*RawMinimalMedia, error) {
+type Meta struct {
+	Total      int    `json:"total"`
+	PageSize   int    `json:"pagesize"`
+	NextCursor string `json:"nextCursor"`
+}
+
+type TimelineItem struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+}
+
+type Photo struct {
+	Id uint32 `json:"id"`
+	W  int    `json:"w"`
+	H  int    `json:"h"`
+	C  string `json:"c"`
+	T  string `json:"t,omitempty"`
+	D  string `json:"d"` // YYYY-MM-DD
+}
+
+// GetTimeline returns media items in the new cursor-based format.
+func GetTimeline(params *FilterParams, c Conf) (*TimelineResponse, error) {
+	// Safety: Default PageSize
+	if params.PageSize <= 0 {
+		params.PageSize = 1000
+	}
+
 	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
 		Flags:    sqlite.OpenReadOnly,
 		PoolSize: 1,
@@ -92,7 +61,11 @@ func getTimelineItems(params *FilterParams, c Conf) ([]*RawMinimalMedia, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("error closing pool", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {
@@ -100,273 +73,308 @@ func getTimelineItems(params *FilterParams, c Conf) ([]*RawMinimalMedia, error) 
 	}
 	defer pool.Put(conn)
 
-	table := "media"
-	term, err := sanitizeSearchInput(params.Term)
+	response := &TimelineResponse{
+		Timeline: []TimelineItem{},
+		Photos:   []Photo{},
+	}
+	response.Meta.PageSize = params.PageSize
+
+	total, err := fetchTotalCount(conn, params, c)
 	if err != nil {
-		c.Logger.Error("error formatting term query", "error", err)
+		return nil, err
 	}
-	if term != "" {
-		table = `SELECT * FROM images_virtual(?)`
-	}
+	response.Meta.Total = total
 
-	camera := params.Camera
-	if camera != "" {
-		camera = `AND i.camera =? `
-	}
-
-	lens := params.Lens
-	if lens != "" {
-		var p string
-		for k, v := range c.Aliases.Lenses {
-			if k == params.Lens {
-				for _, value := range c.Aliases.Lenses {
-					if v == value {
-						p = fmt.Sprintf("%s%s", p, "?,")
-					}
-				}
-			}
-			if v == params.Lens {
-				p = fmt.Sprintf("%s%s", p, "?,")
-			}
+	// calculate histogram for all items when cursor is 0
+	if params.Cursor == 0 {
+		timeline, err := fetchTimelineStats(conn, params, c)
+		if err != nil {
+			return nil, err
 		}
-
-		if p != "" {
-			lens = fmt.Sprintf(`AND i.lens in (%s)`, strings.TrimSuffix(p, ","))
-		} else {
-			lens = `AND i.lens =? `
+		if timeline != nil {
+			response.Timeline = timeline
 		}
 	}
 
-	mediatype := params.MediaType
-	if mediatype != "" {
-		mediatype = `AND i.mediatype =? `
+	photos, err := fetchPhotos(conn, params, c)
+	if err != nil {
+		return nil, err
+	}
+	response.Photos = photos
+
+	// 4. Next Cursor Logic
+	if len(photos) >= params.PageSize {
+		next := params.Cursor + params.PageSize
+		if next < total {
+			response.Meta.NextCursor = strconv.Itoa(next)
+		}
 	}
 
-	software := params.Software
-	if software != "" {
-		software = `AND i.software =? `
+	return response, nil
+}
+
+func fetchTotalCount(conn *sqlite.Conn, params *FilterParams, c Conf) (int, error) {
+	baseQuery, args, err := buildBaseQuery(params, c)
+	if err != nil {
+		return 0, err
 	}
 
-	f35 := ""
-	focallength35 := params.FocalLength35
-	if focallength35 != 0 {
-		f35 = `AND i.focallength35 =? `
-	}
-
-	folder := ""
-	if params.Folder != "" {
-		folder = `AND folder =? `
-	}
-
-	tag_join := ""
-	tag := ""
-	if params.Subject != "" {
-		tag_join = `JOIN images_tags i_t ON i.hash = i_t.image_id
-									JOIN tags t ON i_t.tag_id = t.id`
-		tag = `AND t.key =?`
-	}
-
-	query := fmt.Sprintf(
-		`SELECT DISTINCT
-			i.hash,
-			i.width,
-			i.height,
-			i.date,
-			i.color,
-			i.mediatype,
-			i.offset,
-			i.modified
-		FROM (%s) i
-		%s
-		WHERE i.rating >=?
-		AND i.date >=?
-		%s
-		%s
-		%s
-		%s
-		%s
-		%s
-		%s
-		GROUP BY i.date
-		ORDER BY %s %s`, table, tag_join, tag, folder, camera, lens, mediatype, software, f35, params.OrderBy, params.Direction)
+	// Count unique timestamps
+	query := fmt.Sprintf("SELECT COUNT(DISTINCT m.date) %s", baseQuery)
 
 	stmt, err := conn.Prepare(query)
 	if err != nil {
-		return nil, fmt.Errorf("error preparing SELECT statement: %v", err)
+		return 0, fmt.Errorf("prepare count: %w (query: %s)", err, query)
 	}
-
-	paramIdx := 1
-	if term != "" {
-		stmt.BindText(paramIdx, term)
-		paramIdx++
-	}
-
-	stmt.BindInt64(paramIdx, int64(params.Rating))
-	paramIdx++
-	stmt.BindText(paramIdx, params.From)
-	paramIdx++
-
-	if camera != "" {
-		stmt.BindText(paramIdx, params.Camera)
-		paramIdx++
-	}
-	if lens != "" {
-		var exists bool
-		for k, v := range c.Aliases.Lenses {
-			if k == params.Lens || v == params.Lens {
-				exists = true
-			}
+	defer func() {
+		if err := stmt.Finalize(); err != nil {
+			c.Logger.Error("timeline: finalize stmt error", "err", err)
 		}
-		if exists {
-			for k, v := range c.Aliases.Lenses {
-				if k == params.Lens {
-					for key, value := range c.Aliases.Lenses {
-						if v == value {
-							stmt.BindText(paramIdx, key)
-							paramIdx++
-						}
-					}
+	}()
 
-				}
-				if v == params.Lens {
-					stmt.BindText(paramIdx, k)
-					paramIdx++
-				}
-			}
-		} else {
-			stmt.BindText(paramIdx, params.Lens)
-			paramIdx++
+	bindArgs(stmt, args)
+
+	hasRow, err := stmt.Step()
+	if err != nil {
+		return 0, err
+	}
+	if hasRow {
+		return int(stmt.ColumnInt64(0)), nil
+	}
+	return 0, nil
+}
+
+func fetchTimelineStats(conn *sqlite.Conn, params *FilterParams, c Conf) ([]TimelineItem, error) {
+	baseQuery, args, err := buildBaseQuery(params, c)
+	if err != nil {
+		return nil, err
+	}
+
+	query := fmt.Sprintf(`
+		SELECT substr(m.date, 1, 10) as day, COUNT(DISTINCT m.date)
+		%s
+		GROUP BY day
+		ORDER BY day DESC`, baseQuery)
+
+	stmt, err := conn.Prepare(query)
+	if err != nil {
+		return nil, fmt.Errorf("prepare timeline: %w", err)
+	}
+	defer func() {
+		if err := stmt.Finalize(); err != nil {
+			c.Logger.Error("timeline: finalize stmt error: %v", "err", err)
 		}
-	}
-	if mediatype != "" {
-		stmt.BindText(paramIdx, params.MediaType)
-		paramIdx++
-	}
-	if software != "" {
-		stmt.BindText(paramIdx, params.Software)
-		paramIdx++
-	}
-	if focallength35 != 0 {
-		stmt.BindFloat(paramIdx, focallength35)
-		paramIdx++
-	}
-	if params.Folder != "" {
-		stmt.BindText(paramIdx, params.Folder)
-		paramIdx++
-	}
+	}()
 
-	if params.Subject != "" {
-		stmt.BindText(paramIdx, params.Subject)
-		paramIdx++ //nolint:all
-	}
+	bindArgs(stmt, args)
 
-	var result []*RawMinimalMedia
-
+	results := make([]TimelineItem, 0)
 	for {
 		hasRow, err := stmt.Step()
 		if err != nil {
-			return nil, fmt.Errorf("error stepping through result set: %v", err)
+			return nil, err
+		}
+		if !hasRow {
+			break
+		}
+		results = append(results, TimelineItem{
+			Date:  stmt.ColumnText(0),
+			Count: int(stmt.ColumnInt64(1)),
+		})
+	}
+	return results, nil
+}
+
+func fetchPhotos(conn *sqlite.Conn, params *FilterParams, c Conf) ([]Photo, error) {
+	baseQuery, args, err := buildBaseQuery(params, c)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch specific page, grouping by date to deduplicate exact timestamps.
+	query := fmt.Sprintf(`
+		SELECT DISTINCT
+			m.hash,
+			m.width,
+			m.height,
+			m.color,
+			m.date,
+			m.mediatype
+
+		%s
+		GROUP BY m.date
+		ORDER BY m.%s %s
+		LIMIT %d OFFSET %d`,
+		baseQuery,
+		params.OrderBy, params.Direction,
+		params.PageSize, params.Cursor,
+	)
+
+	stmt, err := conn.Prepare(query)
+	if err != nil {
+		return nil, fmt.Errorf("prepare photos: %w", err)
+	}
+	defer func() {
+		if err := stmt.Finalize(); err != nil {
+			c.Logger.Error("timeline: finalize stmt error: %v", "err", err)
+		}
+	}()
+
+	bindArgs(stmt, args)
+
+	results := make([]Photo, 0)
+	for {
+		hasRow, err := stmt.Step()
+		if err != nil {
+			return nil, err
 		}
 		if !hasRow {
 			break
 		}
 
-		media := &RawMinimalMedia{
-			Hash:      uint32Ptr(stmt.ColumnInt64(0)),
-			Width:     intPtr(stmt.ColumnInt64(1)),
-			Height:    intPtr(stmt.ColumnInt64(2)),
-			Date:      stringPtr(stmt.ColumnText(3)),
-			Color:     stringPtr(stmt.ColumnText(4)),
-			MediaType: stringPtr(stmt.ColumnText(5)),
-			Offset:    float64Ptr(stmt.ColumnFloat(6)),
-			Modified:  stringPtr(stmt.ColumnText(7)),
+		rawDate := stmt.ColumnText(4)
+		shortDate := rawDate
+		if len(rawDate) >= 10 {
+			shortDate = rawDate[:10]
 		}
-		result = append(result, media)
-	}
 
-	err = stmt.Finalize()
-	if err != nil {
-		return nil, fmt.Errorf("error finalizing statement: %v", err)
-	}
+		photo := Photo{
+			Id: uint32(stmt.ColumnInt64(0)),
+			W:  int(stmt.ColumnInt64(1)),
+			H:  int(stmt.ColumnInt64(2)),
+			C:  stmt.ColumnText(3),
+			D:  shortDate,
+		}
 
-	return result, nil
+		t := stmt.ColumnText(5)
+		if t == "video" {
+			photo.T = "video"
+		}
+
+		results = append(results, photo)
+
+	}
+	return results, nil
 }
 
-// groupMediaItemsByDay returns all filtered media items grouped by YYYY-MM-DD.
-func groupMediaItemsByDay(params *FilterParams, mediaItems []*RawMinimalMedia) (map[string]Segment, error) {
-	mediaByDay := make(map[string]Segment)
-	for i := range mediaItems {
-		var t time.Time
-		var err error
-		if params.OrderBy == "date" {
-			if *mediaItems[i].Offset != 0 {
-				t, err = getTimeLocal(*mediaItems[i].Date, *mediaItems[i].Offset)
-				if err != nil {
-					return nil, fmt.Errorf("error parsing local time: %v", err)
-				}
-			} else {
-				t, err = time.Parse("2006-01-02T15:04:05.000Z", *mediaItems[i].Date)
-				if err != nil {
-					return nil, fmt.Errorf("error parsing raw time: %v", err)
-				}
-			}
-		} else if params.OrderBy == "modified" {
-			t, err = time.Parse("2006-01-02T15:04:05.000Z", *mediaItems[i].Modified)
-			if err != nil {
-				return nil, fmt.Errorf("error parsing modified time: %v", err)
-			}
-		}
+func buildBaseQuery(params *FilterParams, c Conf) (string, []interface{}, error) {
+	var sb strings.Builder
+	var args []interface{}
+	var where []string
 
-		if t.Year() >= 1900 {
-			day := t.Format("2006-01-02")
-			imgs := mediaByDay[day].Media
-
-			// Create a slice with base metadata
-			metaSlice := make([]interface{}, 3)
-			metaSlice[0] = *mediaItems[i].Width
-			metaSlice[1] = *mediaItems[i].Height
-			metaSlice[2] = *mediaItems[i].Hash
-
-			// Add color if present
-			if *mediaItems[i].Color != "" {
-				metaSlice = append(metaSlice, *mediaItems[i].Color)
-			}
-
-			// Add video marker if needed
-			if *mediaItems[i].MediaType == "video" {
-				metaSlice = append(metaSlice, "v")
-			}
-
-			imgs = append(imgs, metaSlice)
-
-			mediaByDay[day] = Segment{
-				SegmentId: day,
-				Media:     imgs,
-			}
-		}
+	term, _ := sanitizeSearchInput(params.Term)
+	if term != "" {
+		// join virtual table to main table
+		sb.WriteString(" FROM media m ")
+		sb.WriteString(" INNER JOIN images_virtual v ON m.hash = v.hash ")
+		where = append(where, "images_virtual MATCH ?")
+		args = append(args, term)
+	} else {
+		sb.WriteString(" FROM media m ")
 	}
 
-	return mediaByDay, nil
+	if params.Subject != "" {
+		sb.WriteString(" JOIN images_tags it ON m.hash = it.image_id ")
+		sb.WriteString(" JOIN tags t ON it.tag_id = t.id ")
+		where = append(where, "t.key = ?")
+		args = append(args, params.Subject)
+	}
+
+	// Filters
+	where = append(where, "m.rating >= ?")
+	args = append(args, params.Rating)
+
+	if params.From != "" {
+		where = append(where, "m.date >= ?")
+		args = append(args, params.From)
+	}
+
+	if params.To != "" {
+		where = append(where, "m.date <= ?")
+		args = append(args, params.To)
+	}
+
+	if params.Camera != "" {
+		where = append(where, "m.camera = ?")
+		args = append(args, params.Camera)
+	}
+
+	if params.Lens != "" {
+		lensVariants := []string{params.Lens}
+		for k, v := range c.Aliases.Lenses {
+			if k == params.Lens {
+				for ak, av := range c.Aliases.Lenses {
+					if v == av {
+						lensVariants = append(lensVariants, ak)
+					}
+				}
+				lensVariants = append(lensVariants, v)
+			} else if v == params.Lens {
+				lensVariants = append(lensVariants, k)
+			}
+		}
+
+		placeholders := make([]string, len(lensVariants))
+		for i, v := range lensVariants {
+			placeholders[i] = "?"
+			args = append(args, v)
+		}
+		where = append(where, fmt.Sprintf("m.lens IN (%s)", strings.Join(placeholders, ",")))
+	}
+
+	if params.Folder != "" {
+		where = append(where, "m.folder = ?")
+		args = append(args, params.Folder)
+	}
+
+	if params.MediaType != "" {
+		where = append(where, "m.mediatype = ?")
+		args = append(args, params.MediaType)
+	}
+
+	if params.Software != "" {
+		where = append(where, "m.software = ?")
+		args = append(args, params.Software)
+	}
+
+	if params.FocalLength35 != 0 {
+		where = append(where, "m.focallength35 = ?")
+		args = append(args, params.FocalLength35)
+	}
+
+	if len(where) > 0 {
+		sb.WriteString(" WHERE ")
+		sb.WriteString(strings.Join(where, " AND "))
+	}
+
+	return sb.String(), args, nil
 }
 
-// sanitizeSearchInput sanitizes user input for search queries
-// Allows alphanumeric characters, spaces, and Unicode letters (including diacritics)
+func bindArgs(stmt *sqlite.Stmt, args []interface{}) {
+	for i, arg := range args {
+		idx := i + 1
+		switch v := arg.(type) {
+		case int:
+			stmt.BindInt64(idx, int64(v))
+		case int64:
+			stmt.BindInt64(idx, v)
+		case float64:
+			stmt.BindFloat(idx, v)
+		case string:
+			stmt.BindText(idx, v)
+		case bool:
+			stmt.BindBool(idx, v)
+		default:
+			stmt.BindText(idx, fmt.Sprintf("%v", v))
+		}
+	}
+}
+
 func sanitizeSearchInput(input string) (string, error) {
-	// Use a whitelist approach that allows:
-	// - Alphanumeric (A-Z, a-z, 0-9)
-	// - Spaces
-	// - Unicode letters (including characters like š, é, ñ, etc.)
 	re, err := regexp.Compile(`[^\p{L}\p{N} ]+`)
 	if err != nil {
 		return "", err
 	}
-	// Replace all non-matching characters with an empty string
 	cleaned := re.ReplaceAllString(input, "")
 	return cleaned, nil
 }
-
-// Helper functions for pointer conversion
-func intPtr(v int64) *int           { val := int(v); return &val }
-func uint32Ptr(v int64) *uint32     { val := uint32(v); return &val }
-func stringPtr(v string) *string    { return &v }
-func float64Ptr(v float64) *float64 { return &v }

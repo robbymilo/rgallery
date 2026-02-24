@@ -1,7 +1,6 @@
 package scanner
 
 import (
-	"fmt"
 	"path/filepath"
 
 	exiftool "github.com/barasher/go-exiftool"
@@ -16,7 +15,7 @@ func updateMediaItem(relative_path string, regenThumb bool, et *exiftool.Exiftoo
 	// remove media
 	err := deleteMediaItem(relative_path, false, media, c, cache)
 	if err != nil {
-		fmt.Println("error deleting media item", err)
+		c.Logger.Error("error deleting media item", "err", err)
 		return err
 	}
 
@@ -25,7 +24,7 @@ func updateMediaItem(relative_path string, regenThumb bool, et *exiftool.Exiftoo
 	if isImage(absolute_path) {
 		err = addImage(relative_path, absolute_path, true, regenThumb, et, h, c, cache)
 		if err != nil {
-			fmt.Println("error updating image", err)
+			c.Logger.Error("error updating image", "err", err)
 			return err
 		}
 	}
@@ -33,7 +32,7 @@ func updateMediaItem(relative_path string, regenThumb bool, et *exiftool.Exiftoo
 	if isVideo(absolute_path) {
 		err = addVideo(relative_path, absolute_path, true, regenThumb, et, h, c, cache)
 		if err != nil {
-			fmt.Println("error updating video", err)
+			c.Logger.Error("error updating video", "err", err)
 			return err
 		}
 	}

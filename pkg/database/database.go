@@ -44,7 +44,11 @@ func CreateDB(c Conf) {
 		c.Logger.Error("error opening sqlite db", "error", err)
 		return
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			c.Logger.Error("db.Close error", "err", err)
+		}
+	}()
 
 	c.Logger.Info("applying sqlite schema")
 
@@ -77,7 +81,12 @@ func applySchema(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("error preparing schema statement: %w", err)
 	}
-	defer statement.Close()
+	defer func() {
+		if err := statement.Close(); err != nil {
+			// No context available here, so just log to standard error
+			fmt.Println("statement.Close error:", err)
+		}
+	}()
 
 	_, err = statement.Exec()
 	if err != nil {
@@ -93,7 +102,11 @@ func setSchemaVersion(db *sql.DB, version int) {
 	if err != nil {
 		log.Fatal("error preparing schema version statement: ", err.Error())
 	}
-	defer statement.Close()
+	defer func() {
+		if err := statement.Close(); err != nil {
+			fmt.Println("statement.Close error:", err)
+		}
+	}()
 
 	_, err = statement.Exec("version", version)
 	if err != nil {

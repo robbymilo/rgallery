@@ -27,7 +27,7 @@ type Conf struct {
 	} `yaml:"aliases"`
 	CustomHTML template.HTML `yaml:"custom_html"`
 	Meta       Meta
-	OnThisDay  bool
+	Memories   bool
 }
 
 type MediaItems []Media
@@ -109,7 +109,7 @@ type Subject struct {
 type Days []Day
 
 type Day struct {
-	Key   string  `json:"key"`
+	Key   int     `json:"key"`
 	Value string  `json:"value"`
 	Media []Media `json:"media"`
 	Total int     `json:"total"`
@@ -119,23 +119,6 @@ type Meta struct {
 	Commit     string
 	Tag        string
 	CustomHTML template.HTML
-}
-
-type ResponseFilter struct {
-	ResponseSegment ResponseSegment `json:"segment"`
-	Total           int             `json:"total"`
-	PageSize        int             `json:"pagesize"`
-	Page            int             `json:"page"`
-	OrderBy         string          `json:"orderby"`
-	Direction       string          `json:"direction"`
-	Section         string          `json:"-"`
-	Filter          Filter          `json:"filter"`
-	HideNavFooter   bool            `json:"-"`
-	// Folders          []string        `json:"folders"`
-	// Cameras []string `json:"cameras"`
-	// Lenses  []string `json:"lenses"`
-	// Ratings []string `json:"ratings"`
-	Meta Meta `json:"-"`
 }
 
 type Filter struct {
@@ -151,15 +134,9 @@ type Filter struct {
 }
 
 type ResponseMedia struct {
-	Media         Media      `json:"media"`
-	Previous      []PrevNext `json:"previous"`
-	Next          []PrevNext `json:"next"`
-	Collection    string     `json:"collection"`
-	Slug          string     `json:"slug"`
-	Section       string     `json:"-"`
-	HideNavFooter bool       `json:"-"`
-	TileServer    string     `json:"-"`
-	Meta          Meta       `json:"-"`
+	Media    Media      `json:"media"`
+	Previous []PrevNext `json:"previous"`
+	Next     []PrevNext `json:"next"`
 }
 
 type PrevNext struct {
@@ -174,50 +151,41 @@ type PrevNext struct {
 }
 
 type ResponseMediaItems struct {
-	MediaItems    []Media `json:"mediaItems"`
-	Title         string  `json:"title"`
-	Slug          string  `json:"slug"`
-	Total         int     `json:"total"`
-	PageSize      int     `json:"pagesize"`
-	Page          int     `json:"page"`
-	OrderBy       string  `json:"orderby"`
-	Direction     string  `json:"direction"`
-	Collection    string  `json:"collection"`
-	Section       string  `json:"-"`
-	HideNavFooter bool    `json:"-"`
-	Meta          Meta    `json:"-"`
+	MediaItems []Media `json:"mediaItems"`
+	Title      string  `json:"title"`
+	Slug       string  `json:"slug"`
+	Total      int     `json:"total"`
+	PageSize   int     `json:"pagesize"`
+	Page       int     `json:"page"`
+	OrderBy    string  `json:"orderby"`
+	Direction  string  `json:"direction"`
+	Collection string  `json:"collection"`
+	Section    string  `json:"-"`
+	Meta       Meta    `json:"-"`
 }
 
 type ResponseFolders struct {
-	Folders       []*TreeNode `json:"folders"`
-	Title         string      `json:"title"`
-	Total         int         `json:"total"`
-	PageSize      int         `json:"pagesize"`
-	Page          int         `json:"page"`
-	OrderBy       string      `json:"orderby"`
-	Direction     string      `json:"direction"`
-	Collection    string      `json:"collection"`
-	Section       string      `json:"-"`
-	HideNavFooter bool        `json:"-"`
-	Meta          Meta        `json:"-"`
+	Folders    []*TreeNode `json:"folders"`
+	Title      string      `json:"title"`
+	Total      int         `json:"total"`
+	PageSize   int         `json:"pagesize"`
+	Page       int         `json:"page"`
+	OrderBy    string      `json:"orderby"`
+	Direction  string      `json:"direction"`
+	Collection string      `json:"collection"`
+	Section    string      `json:"-"`
+	Meta       Meta        `json:"-"`
 }
 
 type ResponseTags struct {
-	Tags          Subjects `json:"tags"`
-	Title         string   `json:"title"`
-	Total         int      `json:"total"`
-	PageSize      int      `json:"pagesize"`
-	Page          int      `json:"page"`
-	OrderBy       string   `json:"orderby"`
-	Direction     string   `json:"direction"`
-	Section       string   `json:"-"`
-	HideNavFooter bool     `json:"-"`
-	Meta          Meta     `json:"-"`
-}
-type ResponseDates struct {
-	Dates         Dates  `json:"dates"`
-	Section       string `json:"-"`
-	HideNavFooter bool   `json:"-"`
+	Tags      Subjects `json:"tags"`
+	Total     int      `json:"total"`
+	PageSize  int      `json:"pagesize"`
+	Page      int      `json:"page"`
+	OrderBy   string   `json:"orderby"`
+	Direction string   `json:"direction"`
+	Section   string   `json:"-"`
+	Meta      Meta     `json:"-"`
 }
 
 type Years []Year
@@ -248,21 +216,6 @@ type RawMinimalMedia struct {
 	Modified  *string  `json:"modified"`
 }
 
-type ResponseSegment []*SegmentGroup
-
-type SegmentGroup struct { // rename to DayGroup
-	SectionId *string    `json:"sectionId"`
-	Total     *int       `json:"totalItems"`
-	Segments  *[]Segment `json:"segments"`
-}
-
-type Segment struct { // rename to MonthGroup
-	SegmentId string         `json:"s"`
-	Media     []SegmentMedia `json:"i"`
-}
-
-type SegmentMedia []interface{}
-
 type GearItem struct {
 	Name  string `json:"name"`
 	Total int    `json:"total"`
@@ -276,39 +229,40 @@ type ResponseGear struct {
 	FocalLength35 []GearItem `json:"focalLength35"`
 	Section       string     `json:"-"`
 	Software      []GearItem `json:"software"`
-	HideNavFooter bool       `json:"-"`
 	Title         string     `json:"-"`
 	Meta          Meta       `json:"-"`
 }
 
 type ResponsAuth struct {
-	HideNavFooter bool
-	Section       string
+	Section string
 }
 
 type ResponseAdmin struct {
-	HideNavFooter bool
-	HideAuth      bool
-	Section       string
-	Key           ApiCredentials
-	Keys          []ApiCredentials
-	Users         []User
-	UserName      string
-	UserRole      string
-	Meta          Meta `json:"-"`
+	Section  string
+	Key      ApiCredentials
+	Keys     []ApiCredentials
+	Users    []User
+	UserName string
+	UserRole string
+	Meta     Meta `json:"-"`
+}
+
+type ResponseProfile struct {
+	UserName string `json:"userName"`
+	UserRole string `json:"userRole"`
 }
 
 type ResponseNotFound struct {
-	Title         string `json:"-"`
-	Message       string `json:"-"`
-	Section       string `json:"-"`
-	HideNavFooter bool   `json:"-"`
+	Title   string `json:"-"`
+	Message string `json:"-"`
+	Section string `json:"-"`
 }
 
 type FilterParams struct {
 	PageSize      int
 	Json          bool
 	Page          int
+	Cursor        int // Used as OFFSET
 	Rating        int
 	Direction     string
 	From          string
@@ -381,11 +335,10 @@ type UserKey struct {
 }
 
 type ResponseMap struct {
-	Section       string    `json:"-"`
-	MapItems      []MapItem `json:"mapItems"`
-	HideNavFooter bool      `json:"-"`
-	TileServer    string    `json:"-"`
-	Meta          Meta      `json:"-"`
+	Section    string    `json:"-"`
+	MapItems   []MapItem `json:"mapItems"`
+	TileServer string    `json:"tileServer"`
+	Meta       Meta      `json:"-"`
 }
 
 // short hand json properties to limit response size on large responses.

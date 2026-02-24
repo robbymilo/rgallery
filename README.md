@@ -1,10 +1,10 @@
 # rgallery
 
-<img width="1800" height="1012" alt="rgallery-readme" src="https://github.com/user-attachments/assets/0871bbd6-3a5c-455a-90e5-0f19edf01729" />
+<img width="1800" height="1011" alt="rgallery" src="https://github.com/user-attachments/assets/501ea38c-0874-453a-8b5b-f2776eebd897" />
 
 ## About
 
-rgallery unifies your photo and video collection into a single, elegant web interface—complete with a timeline view, memories, favorites, folders, EXIF metadata, map view, and more. To get started, see [Deploy with Docker](#docker) or [visit the docs](https://rgallery.app/docs/) for more information.
+rgallery unifies your photo and video collection into a single, elegant web interface, complete with a timeline view, memories, favorites, folders, EXIF metadata, map view, and more. To get started, see [Deploy with Docker](#docker) or [visit the docs](https://rgallery.app/docs/) for more information.
 
 rgallery was originally designed for photographer's with highly organized photo collections, but adapts to all photo and video collections, even if they are not well organized.
 

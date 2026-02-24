@@ -20,7 +20,7 @@ exiftool -Rating=5 <path-to-media-file> -overwrite_original
 
 Then initiate a scan in rgallery. The media item will appear in favorites.
 
-## How do I add a title, description, and tags to an image or video.
+## How do I add a title, description, and tags to an image or video?
 
 Here is an example command to add multiple tags, a title, and a description to a file:
 
