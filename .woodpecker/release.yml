@@ -8,14 +8,14 @@ steps:
     image: node:24.12.0-alpine3.22
     commands:
       - apk add make
-      - npm i -g prettier
+      - npm ci
       - make npm prettier-test
+      - make sha
+      - make typecheck
 
   - name: lint
-    image: golang:1.24.0-alpine3.21
+    image: golangci/golangci-lint:v2.8.0
     commands:
-      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - apk add make git curl jq gcc g++
       - make lint
 
   - name: test
@@ -65,6 +65,7 @@ steps:
       - test
       - lint
       - fetch
+
   - name: build-push-rgallery-geo
     image: woodpeckerci/plugin-docker-buildx
     settings:
