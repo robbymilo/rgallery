@@ -61,9 +61,18 @@ const Login: React.FC = () => {
         const errorText = await response.text();
         setError(errorText || 'Login failed. Please check your credentials.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || 'Login failed. Please check your credentials.');
+      if (
+        err &&
+        typeof err === 'object' &&
+        'message' in err &&
+        typeof (err as { message?: unknown }).message === 'string'
+      ) {
+        setError((err as { message: string }).message);
+      } else {
+        setError('Login failed.');
+      }
     } finally {
       setIsLoading(false);
     }

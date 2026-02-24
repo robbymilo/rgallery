@@ -105,10 +105,19 @@ const Memories: React.FC = () => {
           setMemories(data);
           setError(null);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!mounted) return;
         console.error('Fetch error:', err);
-        setError(err && typeof err.message === 'string' ? err.message : 'Failed to load memories.');
+        if (
+          err &&
+          typeof err === 'object' &&
+          'message' in err &&
+          typeof (err as { message?: unknown }).message === 'string'
+        ) {
+          setError((err as { message: string }).message);
+        } else {
+          setError('Failed to load memories.');
+        }
       } finally {
         if (mounted) setLoading(false);
       }

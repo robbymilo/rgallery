@@ -23,9 +23,18 @@ const FolderBrowser: React.FC = () => {
         const data = await getFolderContents(folderPath);
         setFolders(data.folders);
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
-        setError(err && err.message ? err.message : 'Failed to load folders.');
+        if (
+          err &&
+          typeof err === 'object' &&
+          'message' in err &&
+          typeof (err as { message?: unknown }).message === 'string'
+        ) {
+          setError((err as { message: string }).message);
+        } else {
+          setError('Failed to load folders.');
+        }
       } finally {
         setLoading(false);
       }
