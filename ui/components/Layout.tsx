@@ -597,7 +597,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             rel="noopener noreferrer"
             className="text-primary-400 ml-0 whitespace-nowrap hover:underline sm:ml-1"
           >
-            {version.tag ? `v${version.tag}` : `${version.sha.slice(0, 7)}`}
+            {version.tag ? `${version.tag}` : `${version.sha.slice(0, 7)}`}
           </a>
         </div>
       </footer>
