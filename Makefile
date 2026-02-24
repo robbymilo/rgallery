@@ -66,7 +66,7 @@ run-all:
 	make -j 3 run resize geo RGALLERY_RESIZE_SERVICE=http://localhost:3001 RGALLERY_LOCATION_SERVICE=http://localhost:3002 TZ=$(TZ)
 
 # run make test before to get mod time correct
-run-test: clean
+run-test:
 	go run $(FLAGS) ./cmd/rgallery/main.go --disable-auth --media testdata/media --cache testdata/cache --data testdata/data --config testdata/config/config.yml --memories=false  TZ=$(TZ)
 
 .PHONY: test

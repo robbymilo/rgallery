@@ -140,6 +140,11 @@ const Memories: React.FC = () => {
           {memories.map((memory) => (
             <MemoryCard key={memory.key} memory={memory} />
           ))}
+          {memories.length === 0 && (
+            <div>
+              <p>No memories found today.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
