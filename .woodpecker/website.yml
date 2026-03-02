@@ -11,7 +11,7 @@ steps:
     commands:
       - apk update && apk add --no-cache make git
       - make sha website-build-sha
-      - cd website && npm ci
+      - cd website && npm ci && npm run typecheck
 
   - name: build-website
     image: ghcr.io/gohugoio/hugo:v0.157.0
