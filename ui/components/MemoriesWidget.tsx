@@ -47,10 +47,10 @@ const MemoriesWidget: React.FC<MemoriesWidgetProps> = ({ memories }) => {
     setIsDismissed(true);
   };
 
-  const getTransformClass = (): string => {
-    if (!isVisible) return '-translate-x-[110%]';
-    if (isHovered) return 'translate-x-0';
-    return '-translate-x-[19.8rem]';
+  const getTransformStyle = (): string => {
+    if (!isVisible) return 'translateX(calc(-100% - 1rem)) translateY(-50%)';
+    if (isHovered) return 'translateX(0) translateY(-50%)';
+    return 'translateX(-19.8rem) translateY(-50%)';
   };
 
   const handleSpinePointer = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -62,9 +62,10 @@ const MemoriesWidget: React.FC<MemoriesWidgetProps> = ({ memories }) => {
 
   return (
     <div
-      className={`absolute top-1/2 left-0 z-50 mt-32 flex -translate-y-1/2 flex-row-reverse items-start transition-transform duration-500 ${getTransformClass()}`}
+      className={`absolute top-1/2 left-0 z-50 mt-32 flex flex-row-reverse items-start`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      style={{ transform: getTransformStyle(), transition: 'transform 500ms' }}
     >
       <div
         onPointerDown={handleSpinePointer}
