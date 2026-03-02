@@ -6,6 +6,8 @@ steps:
 
   - name: setup
     image: node:24.13-alpine
+    environment:
+      SHA: ${CI_COMMIT_SHA:0:7}
     commands:
       - apk update && apk add --no-cache make
       - npm ci
@@ -13,8 +15,6 @@ steps:
 
   - name: build-website
     image: ghcr.io/gohugoio/hugo:v0.157.0
-    environment:
-      SHA: ${CI_COMMIT_SHA:0:7}
     commands:
       - git config --global --add safe.directory $CI_WORKSPACE
       - make website
