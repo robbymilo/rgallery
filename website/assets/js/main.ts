@@ -7,7 +7,10 @@ import menu from './components/menu';
 import imageExpand from './components/imageExpand';
 
 declare global {
-  interface Window { lazySizes: any; Alpine?: any }
+  interface Window {
+    lazySizes: any;
+    Alpine?: any;
+  }
 }
 
 window.lazySizes = window.lazySizes || {};
