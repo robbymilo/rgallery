@@ -1,9 +1,10 @@
-steps:
-  - name: fetch
-    image: alpine/git
-    commands:
-      - git fetch --tags
+clone:
+  - name: git
+    image: woodpeckerci/plugin-git
+    settings:
+      tags: true
 
+steps:
   - name: setup
     image: node:24.13-alpine
     environment:
