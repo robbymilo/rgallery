@@ -496,6 +496,33 @@ const App: React.FC = () => {
     return () => window.removeEventListener('scroll-to-top', onScrollTop);
   }, [handleScrollToTop]);
 
+  // refresh the timeline when at the top
+  const handleRefresh = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+    setIsLoading(true);
+    try {
+      const apiFilters = getApiFilters();
+      if (error) setError(null);
+      const response = await fetchPhotos('0', apiFilters);
+      const newPhotos = mapApiPhotos(response.photos || []);
+      setTimeline(response.timeline || []);
+      setTotalCount(response.meta.total);
+      setPhotos(newPhotos);
+      setMinOffset(0);
+      setMaxOffset(newPhotos.length);
+      if (newPhotos.length > 0) {
+        setScrollToRequest({ date: newPhotos[0].date, timestamp: Date.now() });
+        setVisibleDate(newPhotos[0].date);
+      }
+    } catch (e) {
+      console.error('Refresh failed:', e);
+    } finally {
+      isLoadingRef.current = false;
+      setIsLoading(false);
+    }
+  }, [getApiFilters, mapApiPhotos, error]);
+
   const handleVisibleDateChange = (date: Date) => {
     if (!isScrubbingLoopActiveRef.current) {
       setVisibleDate(date);
@@ -545,6 +572,7 @@ const App: React.FC = () => {
             onStartReached={handleStartReached}
             onVisibleDateChange={handleVisibleDateChange}
             onScrollToTop={handleScrollToTop}
+            onRefresh={handleRefresh}
             isLoading={isLoading}
             scrollToTarget={scrollToRequest}
             hasMoreItems={hasMoreItems}

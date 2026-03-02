@@ -1,6 +1,7 @@
 import React, { useRef, useState, useLayoutEffect, useMemo, useEffect, useCallback } from 'react';
 import VideoThumb from './VideoThumb';
 import { Link } from 'react-router-dom';
+import Refresh from '../svg/refresh.svg?react';
 import ArrowUp from '../svg/arrow-up.svg?react';
 import { Photo, NodeType, PhotoRowNode, DateHeaderNode, VirtualItem } from '../types';
 import justifiedLayout from 'justified-layout';
@@ -11,6 +12,7 @@ interface VirtualGridProps {
   onStartReached: () => void;
   onVisibleDateChange?: (date: Date) => void;
   onScrollToTop: () => void;
+  onRefresh?: () => Promise<void> | void;
   isLoading: boolean;
   scrollToTarget?: { date: Date; timestamp: number } | null;
   hasMoreItems: boolean;
@@ -124,14 +126,23 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   onStartReached,
   onVisibleDateChange,
   onScrollToTop,
+  onRefresh,
   isLoading,
   scrollToTarget,
   hasMoreItems,
   filters,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const startYRef = useRef<number | null>(null);
+  const pullingRef = useRef(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshComplete, setRefreshComplete] = useState(false);
+  const refreshCompleteTimerRef = useRef<number | null>(null);
+  const prevIsLoadingRef = useRef<boolean>(false);
   const [containerWidth, setContainerWidth] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
+
   const lastReportedDateRef = useRef<string | null>(null);
 
   // Refs for scroll anchoring and processing
@@ -311,6 +322,63 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }
   };
 
+  // pull-to-refresh
+  const THRESHOLD = 60;
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    if (containerRef.current.scrollTop !== 0 || isRefreshing) return;
+    startYRef.current = e.touches[0].clientY;
+    pullingRef.current = true;
+    setPullDistance(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!pullingRef.current || startYRef.current === null) return;
+    const currentY = e.touches[0].clientY;
+    const delta = currentY - startYRef.current;
+    if (delta > 0) {
+      // dampen pull
+      const damp = Math.min(delta * 0.5, 150);
+      setPullDistance(damp);
+      // prevent native overscroll
+      e.preventDefault();
+    }
+  };
+
+  const finishPull = async () => {
+    pullingRef.current = false;
+    startYRef.current = null;
+    if (pullDistance >= THRESHOLD && typeof onRefresh === 'function') {
+      try {
+        setIsRefreshing(true);
+        await onRefresh!();
+      } catch (err) {
+        console.error('[VirtualGrid] refresh failed', err);
+      } finally {
+        setIsRefreshing(false);
+        setPullDistance(0);
+        // show check briefly
+        if (refreshCompleteTimerRef.current) {
+          window.clearTimeout(refreshCompleteTimerRef.current);
+          refreshCompleteTimerRef.current = null;
+        }
+        setRefreshComplete(true);
+        refreshCompleteTimerRef.current = window.setTimeout(() => {
+          setRefreshComplete(false);
+          refreshCompleteTimerRef.current = null;
+        }, 1200);
+      }
+    } else {
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!pullingRef.current) return;
+    void finishPull();
+  };
+
   // visibility calculation
   const findStartIndex = (offset: number) => {
     let low = 0;
@@ -359,6 +427,23 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     return null;
   }, [items, visibleStartIndex]);
 
+  // detect programmatic/global refresh completion to show check briefly
+  useEffect(() => {
+    // when isLoading transitions true->false while atTop (scrollTop <= 1), show check
+    if (prevIsLoadingRef.current && !isLoading && scrollTop <= 1) {
+      if (refreshCompleteTimerRef.current) {
+        window.clearTimeout(refreshCompleteTimerRef.current);
+        refreshCompleteTimerRef.current = null;
+      }
+      setRefreshComplete(true);
+      refreshCompleteTimerRef.current = window.setTimeout(() => {
+        setRefreshComplete(false);
+        refreshCompleteTimerRef.current = null;
+      }, 1200);
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading, scrollTop]);
+
   // persist current date
   useEffect(() => {
     if (!onVisibleDateChange || !currentHeaderDate) return;
@@ -371,6 +456,9 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
       onVisibleDateChange(currentHeaderDate);
     }
   }, [currentHeaderDate, onVisibleDateChange]);
+
+  // whether the viewport is scrolled to the very top
+  const atTop = scrollTop <= 1;
 
   const setItemRef = useCallback((id: string, el: HTMLDivElement | HTMLAnchorElement | null) => {}, []);
 
@@ -409,14 +497,52 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         ref={containerRef}
         className="no-scrollbar dark:bg-charcoal-900 relative w-full overflow-y-auto bg-gray-50"
         onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         style={{
           height: 'calc(100vh - 80px)',
           contain: 'strict',
           overflowAnchor: 'none',
         }}
       >
-        <div style={{ height: totalHeight, position: 'relative' }}>
-          <div style={{ width: gridWidth, margin: '0 auto', position: 'relative', height: '100%' }}>
+        <div style={{ height: totalHeight, position: 'relative', overflow: 'visible' }}>
+          {/* Pull-to-refresh indicator */}
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              height: 40,
+              top: -40 + pullDistance,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: isRefreshing ? 'none' : 'top 150ms ease',
+              zIndex: 60,
+            }}
+          >
+            {isRefreshing ? (
+              <div className="border-charcoal-400 border-t-charcoal-200 h-6 w-6 animate-spin rounded-full border-2" />
+            ) : (
+              <div className="text-sm text-gray-600">
+                {pullDistance >= 60 ? 'Release to refresh' : 'Pull to refresh'}
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              width: gridWidth,
+              margin: '0 auto',
+              position: 'relative',
+              height: '100%',
+              transform: `translateY(${pullDistance}px)`,
+              transition: pullDistance === 0 && !isRefreshing ? 'transform 180ms ease' : 'none',
+            }}
+          >
             {visibleItems.map((item) => {
               if (item.type === NodeType.DATE_HEADER) {
                 const headerNode = item as DateHeaderNode;
@@ -506,10 +632,53 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
       <button
         onClick={onScrollToTop}
         className="fixed bottom-8 left-8 z-50 flex cursor-pointer items-center justify-center rounded-full bg-white p-4 text-black shadow-lg"
-        aria-label="Scroll to top"
-        title="Scroll to top"
+        aria-label={atTop ? 'Refresh timeline' : 'Scroll to top'}
+        title={atTop ? 'Refresh timeline' : 'Scroll to top'}
+        style={{ overflow: 'hidden' }}
       >
-        <ArrowUp className="h-6 w-6" />
+        <div style={{ position: 'relative', width: 24, height: 24 }}>
+          <Refresh
+            className={`${isRefreshing || isLoading ? 'animate-spin' : ''} h-6 w-6`}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              opacity: refreshComplete ? 0 : atTop ? 1 : 0,
+              transform: refreshComplete ? 'scale(0.9)' : atTop ? 'scale(1)' : 'scale(0.9)',
+              transition: 'opacity 180ms ease, transform 180ms ease',
+            }}
+          />
+          <ArrowUp
+            className="h-6 w-6"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              opacity: refreshComplete ? 0 : atTop ? 0 : 1,
+              transform: refreshComplete ? 'scale(0.9)' : atTop ? 'scale(0.9)' : 'scale(1)',
+              transition: 'opacity 180ms ease, transform 180ms ease',
+            }}
+          />
+          {/* check icon */}
+          <svg
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              opacity: refreshComplete ? 1 : 0,
+              transform: refreshComplete ? 'scale(1)' : 'scale(0.9)',
+              transition: 'opacity 180ms ease, transform 180ms ease',
+            }}
+          >
+            <path
+              d="M9.00012 16.17L4.83012 12.0L3.41012 13.41L9.00012 19.0L21.0001 7.0L19.5901 5.59L9.00012 16.17Z"
+              fill="currentColor"
+            />
+          </svg>
+        </div>
       </button>
       {isLoading && (
         <div className="pointer-events-none fixed right-0 bottom-8 left-0 z-50 flex justify-center py-4">
