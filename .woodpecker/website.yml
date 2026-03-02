@@ -9,7 +9,7 @@ steps:
     environment:
       SHA: ${CI_COMMIT_SHA:0:7}
     commands:
-      - apk update && apk add --no-cache make
+      - apk update && apk add --no-cache make git
       - npm ci
       - make sha website-build-sha
 
