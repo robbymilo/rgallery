@@ -10,7 +10,7 @@ steps:
       SHA: ${CI_COMMIT_SHA:0:7}
     commands:
       - apk update && apk add --no-cache make git
-      - npm ci
+      - cd website && npm ci
       - make sha website-build-sha
 
   - name: build-website
@@ -26,7 +26,6 @@ steps:
         from_secret: netlify_auth_token
     commands:
       - npm i -g netlify-cli@18.0.0
-      - npm ci
       - netlify deploy --dir website/public --site 1c96423e-1f71-4f16-9d9c-967aae8feed2 --auth $TOKEN --prod
     when:
       - event: push
