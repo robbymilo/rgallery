@@ -1,5 +1,5 @@
 clone:
-  - name: git
+  - name: clone
     image: woodpeckerci/plugin-git
     settings:
       tags: true
