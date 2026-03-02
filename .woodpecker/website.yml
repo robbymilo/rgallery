@@ -26,6 +26,7 @@ steps:
         from_secret: netlify_auth_token
     commands:
       - npm i -g netlify-cli@18.0.0
+      - npm ci
       - netlify deploy --dir website/public --site 1c96423e-1f71-4f16-9d9c-967aae8feed2 --auth $TOKEN --prod
     when:
       - event: push
