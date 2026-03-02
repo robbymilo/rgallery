@@ -3,7 +3,7 @@ TARGETARCH = $(shell go env GOARCH)
 TARGETOS = $(shell go env GOOS)
 FLAGS = -ldflags="-X 'main.Commit=$(shell git rev-parse HEAD)' -X 'main.Tag=$(shell git describe --exact-match --tags)'"
 SHA = $(shell git rev-parse HEAD)
-TAG = $(shell git describe --exact-match --tags)
+TAG = $(shell git describe --tags --abbrev=0)
 TZ = Europe/Stockholm
 -include $(PWD)/.env
 
