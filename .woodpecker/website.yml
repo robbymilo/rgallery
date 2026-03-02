@@ -10,8 +10,8 @@ steps:
       SHA: ${CI_COMMIT_SHA:0:7}
     commands:
       - apk update && apk add --no-cache make git
-      - cd website && npm ci
       - make sha website-build-sha
+      - cd website && npm ci
 
   - name: build-website
     image: ghcr.io/gohugoio/hugo:v0.157.0
