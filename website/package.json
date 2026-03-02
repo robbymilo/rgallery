@@ -2,6 +2,7 @@
   "name": "rgallery",
   "devDependencies": {
     "@tailwindcss/cli": "4.0.6",
+    "@types/node": "^25.3.3",
     "autoprefixer": "10.4.20",
     "postcss": "8.5.2",
     "postcss-cli": "11.0.0",
