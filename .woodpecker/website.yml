@@ -4,40 +4,34 @@ steps:
     commands:
       - git fetch --tags
 
-  - name: build-container
-    image: docker
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      DOCKER_BUILDKIT: 1
-    commands:
-      - docker build . -f website/Dockerfile -t rgallery-website:latest --build-arg HUGO_VERSION=$(cat website/.hvm | tr -d 'v')
-    depends_on:
-      - fetch
-
-  - name: build-website
-    image: rgallery-website:latest
+  - name: setup
+    image: node:24.13-alpine
     environment:
       SHA: ${CI_COMMIT_SHA:0:7}
     commands:
-      - make website
-    depends_on:
-      - build-container
+      - apk update && apk add --no-cache make git
+      - make sha website-build-sha
+      - cd website && npm ci && npm run typecheck
+
+  - name: build-website
+    image: ghcr.io/gohugoio/hugo:v0.157.0
+    commands:
+      - git config --global --add safe.directory $CI_WORKSPACE
+      - cd website && hugo --gc --minify
 
   - name: deploy-production
-    image: rgallery-website:latest
+    image: node:24.13-alpine
     environment:
       TOKEN:
         from_secret: netlify_auth_token
     commands:
+      - npm i -g netlify-cli@18.0.0
       - netlify deploy --dir website/public --site 1c96423e-1f71-4f16-9d9c-967aae8feed2 --auth $TOKEN --prod
     when:
       - event: push
         branch: main
       - event: tag
         ref: refs/tags/v*
-    depends_on:
-      - build-website
 
 when:
   event:

@@ -88,8 +88,7 @@ install-mac: build-darwin
 website-build-sha:
 	printf "/*\n  build: $(SHA)" > website/content/_headers
 
-website: sha website-build-sha
-	cd website && npm ci
+website:
 	cd website && hugo --gc --minify
 
 server:

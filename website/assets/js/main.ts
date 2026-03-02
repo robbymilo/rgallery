@@ -6,8 +6,14 @@ import 'lazysizes/plugins/unveilhooks/ls.unveilhooks';
 import menu from './components/menu';
 import imageExpand from './components/imageExpand';
 
-window.lazySizes = window.lazySizes || {};
+declare global {
+  interface Window {
+    lazySizes: any;
+    Alpine?: any;
+  }
+}
 
+window.lazySizes = window.lazySizes || {};
 window.Alpine = Alpine;
 
 Alpine.data('menu', menu);
