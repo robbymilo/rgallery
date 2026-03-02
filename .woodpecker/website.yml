@@ -17,7 +17,7 @@ steps:
     image: ghcr.io/gohugoio/hugo:v0.157.0
     commands:
       - git config --global --add safe.directory $CI_WORKSPACE
-      - make website
+      - cd website && hugo --gc --minify
 
   - name: deploy-production
     image: node:24.13-alpine
