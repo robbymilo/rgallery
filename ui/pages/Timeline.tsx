@@ -479,16 +479,41 @@ const App: React.FC = () => {
     jumpToDate(date, false);
   };
 
+  const handleRefresh = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+    setIsLoading(true);
+    try {
+      const apiFilters = getApiFilters();
+      if (error) setError(null);
+      const response = await fetchPhotos('0', apiFilters);
+      const newPhotos = mapApiPhotos(response.photos || []);
+      setTimeline(response.timeline || []);
+      setTotalCount(response.meta.total);
+      setPhotos(newPhotos);
+      setMinOffset(0);
+      setMaxOffset(newPhotos.length);
+      if (newPhotos.length > 0) {
+        setScrollToRequest({ date: newPhotos[0].date, timestamp: Date.now() });
+        setVisibleDate(newPhotos[0].date);
+      }
+    } catch (e) {
+      console.error('Refresh failed:', e);
+    } finally {
+      isLoadingRef.current = false;
+      setIsLoading(false);
+    }
+  }, [getApiFilters, mapApiPhotos, error]);
+
   const handleScrollToTop = useCallback(() => {
     if (timeline.length === 0) return;
     const firstDate = new Date(timeline[0].date);
     if (minOffset === 0) {
-      setScrollToRequest({ date: firstDate, timestamp: Date.now() });
-      setVisibleDate(firstDate);
+      void handleRefresh();
     } else {
       handleDateSelect(firstDate);
     }
-  }, [timeline, minOffset, handleDateSelect]);
+  }, [timeline, minOffset, handleDateSelect, handleRefresh]);
 
   useEffect(() => {
     const onScrollTop = () => handleScrollToTop();
