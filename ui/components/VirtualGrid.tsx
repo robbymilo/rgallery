@@ -430,27 +430,21 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     <>
       <div
         ref={containerRef}
-        className="no-scrollbar dark:bg-charcoal-900 relative w-full overflow-y-auto bg-gray-50"
+        className="no-scrollbar dark:bg-charcoal-900 relative h-[calc(100vh-80px)] w-full overflow-y-auto bg-gray-50 [contain:strict] [overflow-anchor:none]"
         onScroll={handleScroll}
-        style={{
-          height: 'calc(100vh - 80px)',
-          contain: 'strict',
-          overflowAnchor: 'none',
-        }}
       >
         <div style={{ height: totalHeight, position: 'relative' }}>
-          <div style={{ width: gridWidth, margin: '0 auto', position: 'relative', height: '100%' }}>
+          <div style={{ width: gridWidth }} className="relative mx-auto h-full">
             {visibleItems.map((item) => {
               if (item.type === NodeType.DATE_HEADER) {
                 const headerNode = item as DateHeaderNode;
                 return (
                   <div
                     key={item.id}
-                    className="absolute top-0 flex w-full items-center"
+                    className="absolute top-0 z-20 flex w-full items-center"
                     style={{
                       transform: `translateY(${item.top}px)`,
                       height: item.height,
-                      zIndex: 20,
                     }}
                   >
                     <div className="flex items-baseline gap-3">
@@ -480,10 +474,9 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                         to={`/media/${photo.id}?${new URLSearchParams(filters).toString()}`}
                         key={photo.id}
                         ref={(el) => setItemRef(photo.id, el)}
-                        className="group relative overflow-hidden"
+                        className="group relative h-full overflow-hidden"
                         style={{
                           width: row.layoutWidths[index],
-                          height: '100%',
                           backgroundColor: photo.color,
                         }}
                       >
@@ -528,18 +521,14 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
       {/* Scroll to top / refresh button */}
       <button
         onClick={onScrollToTop}
-        className="fixed bottom-8 left-8 z-50 flex cursor-pointer items-center justify-center rounded-full bg-white p-4 text-black shadow-lg"
+        className="fixed bottom-8 left-8 z-50 flex cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white p-4 text-black shadow-lg"
         aria-label={atTop ? 'Refresh timeline' : 'Scroll to top'}
         title={atTop ? 'Refresh timeline' : 'Scroll to top'}
-        style={{ overflow: 'hidden' }}
       >
         <div style={{ position: 'relative', width: 24, height: 24 }}>
           <Refresh
-            className={`${isLoading ? 'animate-spin' : ''} h-6 w-6`}
+            className={`${isLoading ? 'animate-spin' : ''} absolute top-0 left-0 h-6 w-6`}
             style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
               opacity: refreshComplete ? 0 : atTop ? 1 : 0,
               transform: refreshComplete ? 'scale(0.9)' : atTop ? 'scale(1)' : 'scale(0.9)',
               transition: 'opacity 180ms ease, transform 180ms ease',
@@ -547,11 +536,8 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
           />
 
           <ArrowUp
-            className="h-6 w-6"
+            className="absolute top-0 left-0 h-6 w-6"
             style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
               opacity: refreshComplete ? 0 : atTop ? 0 : 1,
               transform: refreshComplete ? 'scale(0.9)' : atTop ? 'scale(0.9)' : 'scale(1)',
               transition: 'opacity 180ms ease, transform 180ms ease',
@@ -562,11 +548,8 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
           <svg
             viewBox="0 0 24 24"
             xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
+            className="absolute top-0 left-0 h-6 w-6"
             style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
               opacity: refreshComplete ? 1 : 0,
               transform: refreshComplete ? 'scale(1)' : 'scale(0.9)',
               transition: 'opacity 180ms ease, transform 180ms ease',
