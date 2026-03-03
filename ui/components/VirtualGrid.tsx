@@ -1,7 +1,6 @@
 import React, { useRef, useState, useLayoutEffect, useMemo, useEffect, useCallback } from 'react';
 import VideoThumb from './VideoThumb';
 import { Link } from 'react-router-dom';
-import Refresh from '../svg/refresh.svg?react';
 import ArrowUp from '../svg/arrow-up.svg?react';
 import { Photo, NodeType, PhotoRowNode, DateHeaderNode, VirtualItem } from '../types';
 import justifiedLayout from 'justified-layout';
@@ -133,10 +132,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
-  const atTop = scrollTop <= 1;
-  const [refreshComplete, setRefreshComplete] = useState(false);
-  const refreshCompleteTimerRef = useRef<number | null>(null);
-  const prevIsLoadingRef = useRef<boolean>(false);
   const lastReportedDateRef = useRef<string | null>(null);
 
   // Refs for scroll anchoring and processing
@@ -404,47 +399,31 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }
   }, [isLoading, onEndReached, hasMoreItems]);
 
-  useEffect(() => {
-    if (prevIsLoadingRef.current && !isLoading && scrollTop <= 1) {
-      if (refreshCompleteTimerRef.current) {
-        window.clearTimeout(refreshCompleteTimerRef.current);
-        refreshCompleteTimerRef.current = null;
-      }
-      setRefreshComplete(true);
-      refreshCompleteTimerRef.current = window.setTimeout(() => {
-        setRefreshComplete(false);
-        refreshCompleteTimerRef.current = null;
-      }, 1200);
-    }
-    prevIsLoadingRef.current = isLoading;
-
-    return () => {
-      if (refreshCompleteTimerRef.current) {
-        window.clearTimeout(refreshCompleteTimerRef.current);
-        refreshCompleteTimerRef.current = null;
-      }
-    };
-  }, [isLoading, scrollTop]);
-
   return (
     <>
       <div
         ref={containerRef}
-        className="no-scrollbar dark:bg-charcoal-900 relative h-[calc(100vh-80px)] w-full overflow-y-auto bg-gray-50 [contain:strict] [overflow-anchor:none]"
+        className="no-scrollbar dark:bg-charcoal-900 relative w-full overflow-y-auto bg-gray-50"
         onScroll={handleScroll}
+        style={{
+          height: 'calc(100vh - 80px)',
+          contain: 'strict',
+          overflowAnchor: 'none',
+        }}
       >
         <div style={{ height: totalHeight, position: 'relative' }}>
-          <div style={{ width: gridWidth }} className="relative mx-auto h-full">
+          <div style={{ width: gridWidth, margin: '0 auto', position: 'relative', height: '100%' }}>
             {visibleItems.map((item) => {
               if (item.type === NodeType.DATE_HEADER) {
                 const headerNode = item as DateHeaderNode;
                 return (
                   <div
                     key={item.id}
-                    className="absolute top-0 z-20 flex w-full items-center"
+                    className="absolute top-0 flex w-full items-center"
                     style={{
                       transform: `translateY(${item.top}px)`,
                       height: item.height,
+                      zIndex: 20,
                     }}
                   >
                     <div className="flex items-baseline gap-3">
@@ -474,9 +453,10 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                         to={`/media/${photo.id}?${new URLSearchParams(filters).toString()}`}
                         key={photo.id}
                         ref={(el) => setItemRef(photo.id, el)}
-                        className="group relative h-full overflow-hidden"
+                        className="group relative overflow-hidden"
                         style={{
                           width: row.layoutWidths[index],
+                          height: '100%',
                           backgroundColor: photo.color,
                         }}
                       >
@@ -518,49 +498,14 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         </div>
       </div>
 
-      {/* Scroll to top / refresh button */}
+      {/* Scroll to top */}
       <button
         onClick={onScrollToTop}
-        className="fixed bottom-8 left-8 z-50 flex cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white p-4 text-black shadow-lg"
-        aria-label={atTop ? 'Refresh timeline' : 'Scroll to top'}
-        title={atTop ? 'Refresh timeline' : 'Scroll to top'}
+        className="fixed bottom-8 left-8 z-50 flex cursor-pointer items-center justify-center rounded-full bg-white p-4 text-black shadow-lg"
+        aria-label="Scroll to top"
+        title="Scroll to top"
       >
-        <div style={{ position: 'relative', width: 24, height: 24 }}>
-          <Refresh
-            className={`${isLoading ? 'animate-spin' : ''} absolute top-0 left-0 h-6 w-6`}
-            style={{
-              opacity: refreshComplete ? 0 : atTop ? 1 : 0,
-              transform: refreshComplete ? 'scale(0.9)' : atTop ? 'scale(1)' : 'scale(0.9)',
-              transition: 'opacity 180ms ease, transform 180ms ease',
-            }}
-          />
-
-          <ArrowUp
-            className="absolute top-0 left-0 h-6 w-6"
-            style={{
-              opacity: refreshComplete ? 0 : atTop ? 0 : 1,
-              transform: refreshComplete ? 'scale(0.9)' : atTop ? 'scale(0.9)' : 'scale(1)',
-              transition: 'opacity 180ms ease, transform 180ms ease',
-            }}
-          />
-
-          {/* Check icon shown briefly after refresh completes */}
-          <svg
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-            className="absolute top-0 left-0 h-6 w-6"
-            style={{
-              opacity: refreshComplete ? 1 : 0,
-              transform: refreshComplete ? 'scale(1)' : 'scale(0.9)',
-              transition: 'opacity 180ms ease, transform 180ms ease',
-            }}
-          >
-            <path
-              d="M9.00012 16.17L4.83012 12.0L3.41012 13.41L9.00012 19.0L21.0001 7.0L19.5901 5.59L9.00012 16.17Z"
-              fill="currentColor"
-            />
-          </svg>
-        </div>
+        <ArrowUp className="h-6 w-6" />
       </button>
       {isLoading && (
         <div className="pointer-events-none fixed right-0 bottom-8 left-0 z-50 flex justify-center py-4">
