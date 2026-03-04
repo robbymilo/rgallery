@@ -68,7 +68,7 @@ const MemoriesWidget: React.FC<MemoriesWidgetProps> = ({ memories }) => {
       style={{ transform: getTransformStyle(), transition: 'transform 500ms' }}
     >
       <div
-        onPointerDown={handleSpinePointer}
+        onPointerUp={handleSpinePointer}
         role="button"
         className="bg-primary-600 pointer-events-auto relative z-50 flex h-80 w-10 touch-manipulation flex-col items-center justify-between rounded-r-2xl border-t border-r border-b border-white/20 py-8 text-white shadow-2xl transition-all hover:brightness-110 md:w-12"
       >
