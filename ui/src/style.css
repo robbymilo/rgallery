@@ -14,7 +14,7 @@
   --color-charcoal-600: oklch(0.464 0.0094 286.03);
   --color-charcoal-700: oklch(0.378 0.0076 286.03);
   --color-charcoal-800: oklch(0.292 0.0059 286.03);
-  --color-charcoal-850: rgb(29, 29, 31);
+  --color-charcoal-850: oklch(0.232 0.0038 286.1);
   --color-charcoal-900: oklch(0.206 0.0042 286.03);
   --color-charcoal-950: oklch(0.12 0.0024 286.03);
   --color-primary-50: oklch(0.97 0.03 246.5);
