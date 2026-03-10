@@ -129,7 +129,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, totalIte
   );
 
   return (
-    <div className="dark:bg-charcoal-900 sticky top-0 z-40 w-full border-b border-neutral-200 bg-white/95 backdrop-blur transition-all dark:border-white/5">
+    <div className="dark:bg-charcoal-850 sticky top-0 z-40 w-full border-b border-neutral-200 bg-white/95 backdrop-blur transition-all dark:border-white/5">
       <div className="mx-auto w-[90vw] py-3 md:w-[80vw]">
         <div className="flex items-center justify-between gap-4">
           <div className="flex min-w-fit items-center">
