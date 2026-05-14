@@ -100,7 +100,10 @@ const Memories: React.FC = () => {
     const fetchMemories = async () => {
       try {
         setLoading(true);
-        const data = await getMemories();
+        const search = window.location.search;
+        const params = new URLSearchParams(search);
+        const date = params.get('date') ?? undefined;
+        const data = await getMemories(date);
         if (mounted) {
           setMemories(data);
           setError(null);

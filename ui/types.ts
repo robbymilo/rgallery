@@ -262,3 +262,7 @@ export interface TimelineFilters {
   software?: string;
   focallength35?: number;
 }
+
+export interface MemoriesFilters {
+  date?: string; // "YYYY-MM-DD"
+}
