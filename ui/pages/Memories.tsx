@@ -4,6 +4,8 @@ import { Memory } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Calendar from '../svg/calendar.svg?react';
+import ArrowLeft from '../svg/arrow-left.svg?react';
+import ArrowRight from '../svg/arrow-right.svg?react';
 import Loading from '../components/Loading';
 import Error from '../components/Error';
 
@@ -94,16 +96,21 @@ const Memories: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+  const getDateFromUrl = () => {
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    return params.get('date') ?? undefined;
+  };
+
+  const [currentDate, setCurrentDate] = useState<string | undefined>(getDateFromUrl());
+
   useEffect(() => {
     let mounted = true;
 
     const fetchMemories = async () => {
       try {
         setLoading(true);
-        const search = window.location.search;
-        const params = new URLSearchParams(search);
-        const date = params.get('date') ?? undefined;
-        const data = await getMemories(date);
+        const data = await getMemories(currentDate);
         if (mounted) {
           setMemories(data);
           setError(null);
@@ -131,7 +138,42 @@ const Memories: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [logout, navigate]);
+  }, [currentDate, logout, navigate]);
+
+  // listen for browser navigation (back/forward)
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setCurrentDate(params.get('date') ?? undefined);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const goToDate = (date: string | undefined) => {
+    const params = new URLSearchParams(window.location.search);
+    if (date) {
+      params.set('date', date);
+    } else {
+      params.delete('date');
+    }
+    const paramString = params.toString();
+    const newUrl = paramString ? `${window.location.pathname}?${paramString}` : window.location.pathname;
+    window.history.pushState({}, '', newUrl);
+    setCurrentDate(date);
+  };
+
+  const getAdjacentDate = (date: string | undefined, diff: number) => {
+    let baseDate: Date;
+    if (date) {
+      baseDate = new Date(date);
+      if (isNaN(baseDate.getTime())) baseDate = new Date();
+    } else {
+      baseDate = new Date();
+    }
+    baseDate.setDate(baseDate.getDate() + diff);
+    return baseDate.toISOString().slice(0, 10);
+  };
 
   if (loading) {
     return <Loading />;
@@ -146,6 +188,22 @@ const Memories: React.FC = () => {
       <div className="pb-12">
         <div className="mb-8">
           <h1>On this day</h1>
+          <div className="mt-4 flex gap-4">
+            <button
+              className="bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-500/10 dark:text-primary-400 dark:hover:bg-primary-500/20 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
+              onClick={() => goToDate(getAdjacentDate(currentDate, -1))}
+            >
+              <ArrowLeft className="mr-2 h-5 w-5" />
+              {getAdjacentDate(currentDate, -1)}
+            </button>
+            <button
+              className="bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-500/10 dark:text-primary-400 dark:hover:bg-primary-500/20 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
+              onClick={() => goToDate(getAdjacentDate(currentDate, 1))}
+            >
+              {getAdjacentDate(currentDate, 1)}
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
