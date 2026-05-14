@@ -61,18 +61,21 @@ const MemoryCard: React.FC<{ memory: Memory }> = ({ memory }) => {
           const to = isOverlay ? `/?date=${memory.value}` : `/media/${item.hash}`;
           return (
             <Link key={`${item.hash}`} to={to} className={cellClass}>
-              <img
-                alt={item.path}
-                srcSet={srcset}
-                className="h-full w-full object-cover transition-transform duration-700"
-                loading="lazy"
-                sizes="450px"
-              />
-              {isOverlay && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                  <span className="text-xl font-bold text-white">+{remainingCount}</span>
-                </div>
-              )}
+              <div className="dark:bg-charcoal-700 relative h-full w-full bg-gray-200">
+                <img
+                  alt={item.path}
+                  srcSet={srcset}
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700"
+                  loading="lazy"
+                  sizes="450px"
+                  style={{ backgroundColor: item.color }}
+                />
+                {isOverlay && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                    <span className="text-xl font-bold text-white">+{remainingCount}</span>
+                  </div>
+                )}
+              </div>
             </Link>
           );
         })}
@@ -206,7 +209,7 @@ const Memories: React.FC = () => {
               {getAdjacentDate(currentDate, -1)}
             </button>
             <button
-              className="bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-500/10 dark:text-primary-400 dark:hover:bg-primary-500/20 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-500/10 dark:text-primary-400 dark:hover:bg-primary-500/20 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => goToDate(getAdjacentDate(currentDate, 1))}
               disabled={isFutureDate(getAdjacentDate(currentDate, 1))}
             >
