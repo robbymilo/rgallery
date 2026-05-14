@@ -13,7 +13,7 @@ import (
 )
 
 type Media = types.Media
-type Days = types.Days
+type Memories = types.Memories
 type Filter = types.Filter
 type CacheKey = types.CacheKey
 
