@@ -101,7 +101,7 @@ steps:
   - name: build-binaries
     image: golang:1.25.10-alpine3.23
     commands:
-      - apt-get update && apt-get install -y make build-essential git
+      - apk add make build-base git
       - make build TARGETOS=linux TARGETARCH=amd64
       - make build TARGETOS=linux TARGETARCH=arm64
       - make build TARGETOS=darwin TARGETARCH=arm64
