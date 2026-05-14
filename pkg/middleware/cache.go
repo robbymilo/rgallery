@@ -20,7 +20,16 @@ func Cache(cache *cache.Cache) func(http.Handler) http.Handler {
 			var cacheMap = make(map[string]interface{})
 			cacheMap["cache"] = cache
 
-			response, found := cache.Get(fmt.Sprint(r.URL) + time.Now().Format("2006-01-02"))
+			// Determine the day used for cache keys. If a `date` query param is
+			// provided and parses as YYYY-MM-DD, use that; otherwise use today.
+			day := time.Now().Format("2006-01-02")
+			if d := r.URL.Query().Get("date"); d != "" {
+				if parsed, err := time.Parse("2006-01-02", d); err == nil {
+					day = parsed.Format("2006-01-02")
+				}
+			}
+
+			response, found := cache.Get(fmt.Sprint(r.URL) + day)
 			if found {
 				w.Header().Set("Cache-Status", "HIT")
 				cacheMap["response"] = response

@@ -114,6 +114,11 @@ func Params(c Conf) func(http.Handler) http.Handler {
 				}
 			}
 
+			var date string
+			if r.URL.Query().Get("date") != "" {
+				date = r.URL.Query().Get("date")
+			}
+
 			params := FilterParams{
 				PageSize:      10,
 				Json:          json,
@@ -129,6 +134,7 @@ func Params(c Conf) func(http.Handler) http.Handler {
 				Subject:       subject,
 				Software:      software,
 				FocalLength35: focallength35,
+				Date:          date,
 			}
 
 			ctx := context.WithValue(r.Context(), ParamsKey{}, params)
