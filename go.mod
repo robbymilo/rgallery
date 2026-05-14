@@ -7,7 +7,7 @@ require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/barasher/go-exiftool v1.10.0
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/cenkalti/dominantcolor v1.0.2
+	github.com/cenkalti/dominantcolor v1.0.3
 	github.com/coder/websocket v1.8.14
 	github.com/disintegration/imageorient v0.0.0-20180920195336-8147d86e83ec
 	github.com/disintegration/imaging v1.6.2
