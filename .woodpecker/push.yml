@@ -15,7 +15,7 @@ steps:
       - make lint
 
   - name: test
-    image: golang:1.24.0-alpine3.21
+    image: golang:1.25.10-alpine3.23
     commands:
       - apk add make git exiftool ffmpeg gcc g++
       - make test
@@ -23,9 +23,9 @@ steps:
       - prettier
 
   - name: build
-    image: golang:1.24.0-bookworm
+    image: golang:1.25.10-alpine3.23
     commands:
-      - apt-get update && apt-get install -y make build-essential git
+      - apk add make build-base git
       - make build
     depends_on:
       - prettier
@@ -38,6 +38,51 @@ steps:
       - make assets
     depends_on:
       - prettier
+
+  - name: build-push-rgallery
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      dockerfile: cmd/rgallery/Dockerfile
+      platforms:
+        - linux/arm64
+        - linux/amd64
+      repo: robbymilo/rgallery
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tags:
+        - ${CI_COMMIT_SHA}
+
+  - name: build-push-rgallery-resize
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      dockerfile: cmd/rgallery-resize/Dockerfile
+      platforms:
+        - linux/arm64
+        - linux/amd64
+      repo: robbymilo/rgallery
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tags:
+        - resize-${CI_COMMIT_SHA}
+
+  - name: build-push-rgallery-geo
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      dockerfile: cmd/rgallery-geo/Dockerfile
+      platforms:
+        - linux/arm64
+        - linux/amd64
+      repo: robbymilo/rgallery
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tags:
+        - geo-${CI_COMMIT_SHA}
 
 when:
   event:

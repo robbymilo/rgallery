@@ -7,7 +7,7 @@ COPY . .
 RUN npm i
 RUN make assets
 
-FROM --platform=$BUILDPLATFORM golang:1.24.0-alpine3.21 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.10-alpine3.23 AS builder
 ARG ARCH TARGETOS TARGETARCH
 
 RUN apk update && apk add --no-cache make build-base git gcc g++

@@ -1,6 +1,6 @@
 module github.com/robbymilo/rgallery
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/766b/chi-prometheus v0.0.0-20211217152057-87afa9aa2ca8
