@@ -175,6 +175,15 @@ const Memories: React.FC = () => {
     return baseDate.toISOString().slice(0, 10);
   };
 
+  // Helper to check if a date is in the future (after today)
+  const isFutureDate = (dateStr: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    return d > today;
+  };
+
   if (loading) {
     return <Loading />;
   }
@@ -197,8 +206,9 @@ const Memories: React.FC = () => {
               {getAdjacentDate(currentDate, -1)}
             </button>
             <button
-              className="bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-500/10 dark:text-primary-400 dark:hover:bg-primary-500/20 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors"
+              className="bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-500/10 dark:text-primary-400 dark:hover:bg-primary-500/20 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => goToDate(getAdjacentDate(currentDate, 1))}
+              disabled={isFutureDate(getAdjacentDate(currentDate, 1))}
             >
               {getAdjacentDate(currentDate, 1)}
               <ArrowRight className="ml-2 h-5 w-5" />
