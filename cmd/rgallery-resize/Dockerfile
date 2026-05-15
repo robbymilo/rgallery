@@ -8,7 +8,7 @@ COPY . /go/src/github.com/robbymilo/rgallery-resize
 
 RUN make build-rgallery-resize TARGETOS=${TARGETOS} TARGETARCH=${TARGETARCH}
 
-FROM --platform=$BUILDPLATFORM alpine:3.18.5
+FROM --platform=$BUILDPLATFORM alpine:3.23.4
 ARG ARCH TARGETOS TARGETARCH
 
 RUN apk add --no-cache libc6-compat vips-heif vips-dev vips-tools
