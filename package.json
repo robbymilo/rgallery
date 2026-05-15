@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/robbymilo/rgallery#readme",
   "dependencies": {
-    "@tailwindcss/postcss": "4.1.17",
+    "@tailwindcss/postcss": "4.3.0",
     "@tailwindcss/vite": "4.1.17",
     "hls.js": "1.5.7",
     "justified-layout": "4.1.0",
