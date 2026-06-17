@@ -21,7 +21,7 @@ COPY --from=frontend /usr/app/pkg/dist ./pkg/dist
 
 RUN make build-rgallery TARGETOS=${TARGETOS} TARGETARCH=${TARGETARCH}
 
-FROM --platform=$BUILDPLATFORM alpine:3.18.5
+FROM --platform=$BUILDPLATFORM alpine:3.24.1
 ARG ARCH TARGETOS TARGETARCH
 
 RUN apk add --no-cache exiftool ffmpeg vips-heif vips-dev vips-tools
