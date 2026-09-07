@@ -381,7 +381,6 @@ func GetPrevious(date time.Time, hash uint32, params FilterParams, c Conf) ([]Pr
 			%s
 			GROUP BY i.date
 			ORDER BY i.date ASC LIMIT 3)
-		GROUP BY date
 		ORDER BY date DESC`,
 		table, firstJoin, secondJoin, folder, camera, lens, mediatype, software, f35)
 
