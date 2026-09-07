@@ -19,7 +19,9 @@ func mediaFixture(t *testing.T) types.Conf {
 	database.CreateDB(c)
 	db, err := sql.Open("sqlite", database.NewSqlConnectionString(c))
 	require.NoError(t, err)
-	defer db.Close()
+	t.Cleanup(func() {
+		require.NoError(t, db.Close())
+	})
 	for _, id := range []int{1, 2, 3} {
 		_, err = db.Exec(`INSERT INTO media (hash, path, date, modified, folder, rating, width, height, latitude, longitude) VALUES (?, '20250101-senično/NOT-NIKON.jpg', '2025-01-01T00:00:00.000Z', '2025-01-01T00:00:00.000Z', '20250101-senično', 5, 100, 100, 46, 14)`, id)
 		require.NoError(t, err)
