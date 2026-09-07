@@ -3,7 +3,6 @@ package queries
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -371,10 +370,21 @@ func bindArgs(stmt *sqlite.Stmt, args []interface{}) {
 }
 
 func sanitizeSearchInput(input string) (string, error) {
-	re, err := regexp.Compile(`[^\p{L}\p{N} ]+`)
-	if err != nil {
-		return "", err
+	// Bind literal phrases, not FTS operators. Preserve punctuation so FTS
+	// tokenizes words the same way as the indexed text.
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", nil
 	}
-	cleaned := re.ReplaceAllString(input, "")
-	return cleaned, nil
+	var terms []string
+	for _, term := range strings.Fields(input) {
+		// The trigram index cannot match words shorter than three characters.
+		if len([]rune(term)) >= 3 {
+			terms = append(terms, `"`+strings.ReplaceAll(term, `"`, `""`)+`"`)
+		}
+	}
+	if len(terms) == 0 {
+		return `"` + strings.ReplaceAll(input, `"`, `""`) + `"`, nil
+	}
+	return strings.Join(terms, " AND "), nil
 }

@@ -3,6 +3,17 @@ import assert from 'node:assert';
 import { parseSearchTokens } from '../lib/parseSearchTokens.ts';
 
 describe('FilterBar token parsing', () => {
+  it('parses combined filters without merging multi-word values', () => {
+    const result = parseSearchTokens('common kingfisher camera:NIKON Z 9 tag:bird lens:Nikkor 50mm');
+    assert.strictEqual(result.searchQuery, 'common kingfisher');
+    assert.strictEqual(result.camera, 'NIKON Z 9');
+    assert.strictEqual(result.tag, 'bird');
+    assert.strictEqual(result.lens, 'Nikkor 50mm');
+  });
+
+  it('does not send invalid focal lengths', () => {
+    assert.strictEqual(parseSearchTokens('focallength35:abc').focallength35, undefined);
+  });
   it('should parse single-word camera value', () => {
     const result = parseSearchTokens('camera:NIKON');
     assert.strictEqual(result.camera, 'NIKON');
