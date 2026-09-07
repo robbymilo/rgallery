@@ -126,7 +126,6 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 		r.Get("/media/{hash}", server.ServeMedia)
 
 		r.Get("/folders", server.ServeFolders)
-		r.Get("/folder*", server.ServeFolder)
 
 		r.Get("/tags", server.ServeTags)
 		r.Get("/tag/{slug}", server.ServeTag)
