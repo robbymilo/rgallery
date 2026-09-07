@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/robbymilo/rgallery/pkg/types"
@@ -16,6 +17,7 @@ type Session struct {
 type Conf = types.Conf
 
 var sessions = map[string]Session{}
+var sessionsMu sync.RWMutex
 
 func (s Session) IsExpired() bool {
 	return s.expiry.Before(time.Now())
@@ -27,6 +29,8 @@ func CreateSession(username, role, token string, expiry time.Time, c Conf) error
 	}
 
 	c.Logger.Info("adding session: " + username + " role: " + role)
+	sessionsMu.Lock()
+	defer sessionsMu.Unlock()
 	sessions[token] = Session{
 		UserName: username,
 		Role:     role,
@@ -36,6 +40,8 @@ func CreateSession(username, role, token string, expiry time.Time, c Conf) error
 }
 
 func GetSession(token string) (Session, bool) {
+	sessionsMu.RLock()
+	defer sessionsMu.RUnlock()
 	userSession, exists := sessions[token]
 	if !exists {
 		return userSession, false
@@ -45,11 +51,15 @@ func GetSession(token string) (Session, bool) {
 }
 
 func DeleteSession(token string, c Conf) {
+	sessionsMu.Lock()
+	defer sessionsMu.Unlock()
 	c.Logger.Info("deleting session: " + sessions[token].UserName)
 	delete(sessions, token)
 }
 
 func DeleteUserSessions(username string) {
+	sessionsMu.Lock()
+	defer sessionsMu.Unlock()
 	for k := range sessions {
 		if sessions[k].UserName == username {
 			fmt.Println("deleting session:", sessions[k].UserName)

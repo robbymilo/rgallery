@@ -133,7 +133,7 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 
 		r.Get("/map", server.ServeMap)
 		r.Get("/gear", server.ServeGear)
-		r.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
+		r.With(middleware.Admin(c)).Get("/admin", func(w http.ResponseWriter, r *http.Request) {
 			server.ServeAdmin(w, r, c)
 		})
 
@@ -173,8 +173,11 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 		})
 
 		r.Post("/logout", server.ServeLogOut)
-		r.Post("/keys/create", server.CreateKey)
-		r.Post("/keys/delete", server.RemoveKey)
+		r.With(middleware.Admin(c)).Post("/keys/create", server.CreateKey)
+		r.With(middleware.Admin(c)).Post("/keys/delete", server.RemoveKey)
+		if !c.DisableAuth {
+			r.With(middleware.Admin(c)).Post("/user/add", server.SignUp)
+		}
 
 	})
 
@@ -190,13 +193,8 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 			err := server.SignIn(w, r, c)
 			if err != nil {
 				c.Logger.Error("error on signin route", "error", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				if err != nil {
-					c.Logger.Error("error writing 500 status for signin route", "error", err)
-				}
 			}
 		})
-		r.Post("/api/user/add", server.SignUp)
 	}
 
 	if c.ResizeService != "" {

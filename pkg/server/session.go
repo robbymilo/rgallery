@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,21 +20,20 @@ type ApiCredentials = types.ApiCredentials
 // SignIn handles a post request to create a session for an existing user.
 func SignIn(w http.ResponseWriter, r *http.Request, c Conf) error {
 
-	// get sign in data as JSON
+	// Validate form fields before accessing credentials.
 	creds := &UserCredentials{}
 	err := r.ParseForm()
 	if err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
 		return fmt.Errorf("error parsing form: %v", err)
 	}
 
-	creds.Username = r.Form["username"][0]
-	creds.Password = r.Form["password"][0]
-
-	// create error URL
-	errorUrl, _ := url.Parse("/signin")
-	errorParams := url.Values{}
-	errorParams.Add("error", "login")
-	errorUrl.RawQuery = errorParams.Encode()
+	creds.Username = r.Form.Get("username")
+	creds.Password = r.Form.Get("password")
+	if creds.Username == "" || creds.Password == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return nil
+	}
 
 	storedCreds, err := users.GetUser(creds, c)
 	if err != nil {
@@ -57,16 +55,22 @@ func SignIn(w http.ResponseWriter, r *http.Request, c Conf) error {
 
 	err = sessions.CreateSession(storedCreds.Username, storedCreds.Role, token, expires, c)
 	if err != nil {
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`Success`)); err != nil {
-			c.Logger.Error("failed to write response: %v", "err", err)
-		}
+		http.Error(w, "Error creating session", http.StatusInternalServerError)
 		return fmt.Errorf("error generating session: %v", err)
 	}
 
+	// Remove old cookies with path of /api
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Path:     "/api",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    token,
+		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
