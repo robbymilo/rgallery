@@ -7,33 +7,29 @@ export function parseSearchTokens(raw: string): {
   folder?: string;
   focallength35?: number;
 } {
-  // Extract a single token:value pattern at the end of the string
-  const tokenPattern = /\b(tag|camera|lens|software|folder|focallength35):(.+?)$/i;
-  const match = raw.match(tokenPattern);
-
-  if (!match) {
-    return {
-      searchQuery: raw.trim(),
-      tag: undefined,
-      camera: undefined,
-      lens: undefined,
-      software: undefined,
-      folder: undefined,
-      focallength35: undefined,
-    };
-  }
-
-  const key = match[1].toLowerCase();
-  const value = match[2].trim();
-  const searchQuery = raw.slice(0, match.index).trim();
-
-  return {
-    searchQuery,
-    tag: key === 'tag' ? value : undefined,
-    camera: key === 'camera' ? value : undefined,
-    lens: key === 'lens' ? value : undefined,
-    software: key === 'software' ? value : undefined,
-    folder: key === 'folder' ? value : undefined,
-    focallength35: key === 'focallength35' ? parseInt(value, 10) : undefined,
+  const result = {
+    searchQuery: '',
+    tag: undefined as string | undefined,
+    camera: undefined as string | undefined,
+    lens: undefined as string | undefined,
+    software: undefined as string | undefined,
+    folder: undefined as string | undefined,
+    focallength35: undefined as number | undefined,
   };
+  const tokenPattern =
+    /(?:^|\s)(tag|camera|lens|software|folder|focallength35):\s*(.*?)(?=\s+(?:tag|camera|lens|software|folder|focallength35):|$)/gi;
+  result.searchQuery = raw
+    .replace(tokenPattern, (_, key: string, value: string) => {
+      const normalized = key.toLowerCase() as Exclude<keyof typeof result, 'searchQuery'>;
+      const text = value.trim();
+      if (normalized === 'focallength35') {
+        const number = Number(text);
+        result.focallength35 = text && Number.isFinite(number) && number > 0 ? number : undefined;
+      } else {
+        result[normalized] = text || undefined;
+      }
+      return '';
+    })
+    .trim();
+  return result;
 }
