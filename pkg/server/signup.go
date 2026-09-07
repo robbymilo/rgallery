@@ -15,11 +15,19 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	creds := &UserCredentials{}
 
 	if params.Json {
-		if err := json.NewDecoder(r.Body).Decode(creds); err != nil {
+		// Keep password input separate from credentials, whose password must
+		// never be serialized into responses.
+		var input struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+			Role     string `json:"role"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			c.Logger.Error("error decoding json", "error", err)
 			return
 		}
+		creds.Username, creds.Password, creds.Role = input.Username, input.Password, input.Role
 	} else {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Invalid form data", http.StatusBadRequest)
@@ -36,6 +44,10 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		creds.Role = r.Form.Get("role")
 	}
 
+	if err := users.ValidateCredentials(*creds); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if err := users.AddUser(*creds, c); err != nil {
 		c.Logger.Error("error adding user", "error", err)
 		http.Error(w, "Error adding user", http.StatusInternalServerError)

@@ -39,6 +39,7 @@ func Auth(c Conf) func(http.Handler) http.Handler {
 
 							// session created, continue request
 							next.ServeHTTP(w, r.WithContext(ctx))
+							return
 						}
 					}
 
@@ -58,6 +59,10 @@ func Auth(c Conf) func(http.Handler) http.Handler {
 						}
 						c.Logger.Error("cookie error", "error", err)
 						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+					if cookie.Value == "" {
+						w.WriteHeader(http.StatusUnauthorized)
 						return
 					}
 					if cookie.Value != "" {
@@ -92,6 +97,20 @@ func Auth(c Conf) func(http.Handler) http.Handler {
 
 			}
 
+		})
+	}
+}
+
+// Admin restricts authenticated requests to administrators.
+func Admin(c Conf) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user, _ := r.Context().Value(UserKey{}).(UserKey)
+			if !c.DisableAuth && user.UserRole != "admin" {
+				http.Error(w, "Permission denied", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }

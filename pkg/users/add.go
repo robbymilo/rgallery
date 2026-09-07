@@ -3,6 +3,7 @@ package users
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/robbymilo/rgallery/pkg/database"
 	"github.com/robbymilo/rgallery/pkg/types"
@@ -14,9 +15,23 @@ type UserCredentials = types.UserCredentials
 type Conf = types.Conf
 type User = types.User
 
-func AddUser(creds UserCredentials, c Conf) error {
+// ValidateCredentials checks new users regardless of their input format.
+func ValidateCredentials(creds UserCredentials) error {
+	if strings.TrimSpace(creds.Username) == "" || creds.Password == "" {
+		return errors.New("missing required fields")
+	}
+	if creds.Role != "admin" && creds.Role != "viewer" {
+		return errors.New("invalid user role")
+	}
 	if creds.Username == "admin" {
 		return errors.New("admin user may not be created")
+	}
+	return nil
+}
+
+func AddUser(creds UserCredentials, c Conf) error {
+	if err := ValidateCredentials(creds); err != nil {
+		return err
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
@@ -68,6 +83,11 @@ func AddUser(creds UserCredentials, c Conf) error {
 
 	if finalizeErr := insertStmt.Finalize(); finalizeErr != nil {
 		return fmt.Errorf("error finalizing insert statement: %v", finalizeErr)
+	}
+
+	// Keep the default administrator until a replacement administrator exists.
+	if creds.Role != "admin" {
+		return nil
 	}
 
 	// delete default admin user if necessary

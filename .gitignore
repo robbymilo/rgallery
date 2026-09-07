@@ -30,3 +30,4 @@ react/dist
 build
 ui/version.json
 website/resources
+go-tmp
