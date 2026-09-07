@@ -17,7 +17,7 @@ type MediaCollection struct {
 }
 
 // GetMemories returns media items that occurred on the today's date in previous years and groups them into years.
-func GetMemories(c Conf) (Days, error) {
+func GetMemories(day string, c Conf) (Memories, error) {
 	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
 		Flags:    sqlite.OpenReadOnly,
 		PoolSize: 5,
@@ -38,11 +38,18 @@ func GetMemories(c Conf) (Days, error) {
 	defer pool.Put(conn)
 
 	total := 20
-	today := time.Now()
+	parsedDay := time.Now()
+	if day != "" {
+		parsedDay, err = time.Parse("2006-01-02", day)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing day: %v", err)
+		}
+	}
+
 	var dates []string
 
 	for i := 1; i <= total; i++ {
-		pastDate := today.AddDate(-i, 0, 0).Format("2006-01-02")
+		pastDate := parsedDay.AddDate(-i, 0, 0).Format("2006-01-02")
 		dates = append(dates, fmt.Sprintf("DATE('%s')", pastDate))
 	}
 
@@ -77,7 +84,7 @@ WHERE DATE(date) IN (%s)
 	return sortedDays, nil
 }
 
-func (mediaSorter *MediaCollection) sortByYear() (Days, error) {
+func (mediaSorter *MediaCollection) sortByYear() (Memories, error) {
 	// group by year
 	group := make(map[int][]Media)
 	for _, image := range mediaSorter.Items {
@@ -89,7 +96,7 @@ func (mediaSorter *MediaCollection) sortByYear() (Days, error) {
 	}
 
 	// sort by year
-	years := []Day{}
+	memories := []Memory{}
 	for itemYear, yearMediaItems := range group {
 		if len(yearMediaItems) == 0 {
 			continue
@@ -109,9 +116,9 @@ func (mediaSorter *MediaCollection) sortByYear() (Days, error) {
 			ago = 1
 		}
 
-		years = append(
-			years,
-			Day{
+		memories = append(
+			memories,
+			Memory{
 				Key:   ago,
 				Value: referenceDate.Format("2006-01-02"),
 				Media: final,
@@ -119,9 +126,9 @@ func (mediaSorter *MediaCollection) sortByYear() (Days, error) {
 			})
 	}
 
-	sort.SliceStable(years, func(i, j int) bool {
-		return years[i].Value > years[j].Value
+	sort.SliceStable(memories, func(i, j int) bool {
+		return memories[i].Value > memories[j].Value
 	})
 
-	return years, nil
+	return memories, nil
 }

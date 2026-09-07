@@ -14,8 +14,8 @@ type Media = types.Media
 type DatabaseMedia = types.DatabaseMedia
 type Subject = types.Subject
 type Subjects = types.Subjects
-type Day = types.Day
-type Days = types.Days
+type Memory = types.Memory
+type Memories = types.Memories
 type FilterParams = types.FilterParams
 
 var columns = database.Columns()

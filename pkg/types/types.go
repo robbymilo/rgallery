@@ -106,9 +106,9 @@ type Subject struct {
 	Value string `json:"value"`
 }
 
-type Days []Day
+type Memories []Memory
 
-type Day struct {
+type Memory struct {
 	Key   int     `json:"key"`
 	Value string  `json:"value"`
 	Media []Media `json:"media"`
@@ -276,6 +276,7 @@ type FilterParams struct {
 	Subject       string
 	Software      string
 	FocalLength35 float64
+	Date          string
 }
 
 type Folder struct {
