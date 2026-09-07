@@ -10,7 +10,10 @@ import (
 
 type FilterParams = types.FilterParams
 type ResponseAdmin = types.ResponseAdmin
+type ResponseMediaItems = types.ResponseMediaItems
 type ResponseProfile = types.ResponseProfile
+type ConfigKey = types.ConfigKey
+type ParamsKey = types.ParamsKey
 
 func DecodeURL(s string) (string, error) {
 	decoded, err := url.QueryUnescape(s)
