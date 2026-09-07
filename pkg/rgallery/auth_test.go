@@ -27,7 +27,7 @@ import (
 )
 
 // These regression tests exercise authentication through the real router.
-// Do not parallelize: production sessions are stored in a process-global map.
+// Do not parallelize: fixtures share usernames in the global session store.
 type authFixture struct {
 	t      *testing.T
 	c      types.Conf
@@ -77,7 +77,7 @@ func (f *authFixture) login(username, password string) *http.Cookie {
 	w := f.signIn(username, password)
 	require.Equal(f.t, http.StatusFound, w.Code, w.Body.String())
 	for _, c := range w.Result().Cookies() {
-		if c.Name == "session" {
+		if c.Name == "session" && c.Value != "" && c.MaxAge >= 0 {
 			return c
 		}
 	}
