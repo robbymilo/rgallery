@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FilterState, SortOption } from '../types';
 import StarRating from './StarRating';
 import Close from '../svg/close.svg?react';
@@ -15,9 +15,28 @@ interface FilterBarProps {
 const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, totalItems }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const formatSearch = (value: FilterState) =>
+    [
+      value.searchQuery,
+      ...(['tag', 'folder', 'camera', 'lens', 'software', 'focallength35'] as const)
+        .filter((key) => value[key])
+        .map((key) => `${key}:${value[key]}`),
+    ]
+      .filter(Boolean)
+      .join(' ');
+  const [searchInput, setSearchInput] = useState(() => formatSearch(filters));
+  const lastSearchRef = useRef(formatSearch(filters));
+  useEffect(() => {
+    const formatted = formatSearch(filters);
+    if (formatted !== lastSearchRef.current) setSearchInput(formatted);
+    lastSearchRef.current = formatted;
+  }, [filters]);
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
+    setSearchInput(raw);
     const parsed = parseSearchTokens(raw);
+    lastSearchRef.current = formatSearch({ ...filters, ...parsed });
 
     onFilterChange({
       ...filters,
@@ -34,6 +53,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, totalIte
   };
 
   const clearFilters = () => {
+    setSearchInput('');
     // create a new object to force state update
     onFilterChange({
       searchQuery: '',
@@ -180,27 +200,14 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, onFilterChange, totalIte
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <Magnifier className="group-focus-within:text-primary-600 dark:group-focus-within:text-primary-400 h-4 w-4 text-neutral-400 transition-colors dark:text-neutral-500" />
               </div>
-              {(() => {
-                const parts: string[] = [];
-                if (filters.searchQuery) parts.push(filters.searchQuery);
-                if (filters.tag) parts.push(`tag:${filters.tag}`);
-                if (filters.folder) parts.push(`folder:${filters.folder}`);
-                if (filters.camera) parts.push(`camera:${filters.camera}`);
-                if (filters.lens) parts.push(`lens:${filters.lens}`);
-                if (filters.software) parts.push(`software:${filters.software}`);
-                if (filters.focallength35) parts.push(`focallength35:${filters.focallength35}`);
-                const inputValue = parts.join(' ').trim();
-
-                return (
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    className="focus:border-primary-500 focus:ring-primary-500 block h-9 w-full rounded-lg border border-neutral-200 bg-white pr-3 pl-9 text-sm text-[10px] leading-5 text-neutral-900 placeholder-neutral-400 transition-all focus:ring-0 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-200 dark:placeholder-neutral-500"
-                    value={inputValue}
-                    onChange={handleSearchChange}
-                  />
-                );
-              })()}
+              <input
+                type="text"
+                aria-label="Search media"
+                placeholder="Search..."
+                className="focus:border-primary-500 focus:ring-primary-500 block h-9 w-full rounded-lg border border-neutral-200 bg-white pr-3 pl-9 text-sm text-[10px] leading-5 text-neutral-900 placeholder-neutral-400 transition-all focus:ring-0 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-200 dark:placeholder-neutral-500"
+                value={searchInput}
+                onChange={handleSearchChange}
+              />
             </div>
           </div>
         </div>
