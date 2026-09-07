@@ -14,6 +14,7 @@ const MediaDetail: React.FC = () => {
   const { setIsFullscreen } = useFullscreen();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.NORMAL);
 
   const filters = useMemo(() => {
@@ -25,26 +26,29 @@ const MediaDetail: React.FC = () => {
     return filterObj;
   }, [location.search]);
 
-  const loadData = useCallback(
-    async (id: number) => {
-      setIsLoading(true);
-      try {
-        const result = await getMedia(id, filters);
-        setData(result);
-      } catch (e) {
-        setData(null);
-      }
-      setIsLoading(false);
-    },
-    [filters]
-  );
-
-  // Load data when mediaID changes
   useEffect(() => {
-    if (mediaID && !isNaN(Number(mediaID))) {
-      loadData(Number(mediaID));
+    const controller = new AbortController();
+    setData(null);
+    setError(null);
+    if (!mediaID || !/^\d+$/.test(mediaID) || Number(mediaID) <= 0 || Number(mediaID) > 0xffffffff) {
+      setError('Invalid media URL.');
+      setIsLoading(false);
+      return;
     }
-  }, [mediaID, loadData]);
+    setIsLoading(true);
+    getMedia(Number(mediaID), filters, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setData(result);
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted)
+          setError(String(e).includes('404') ? 'Media not found.' : 'Unable to load media. Please try again.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+    return () => controller.abort();
+  }, [mediaID, filters]);
 
   // Update document title when media changes
   useEffect(() => {
@@ -127,7 +131,15 @@ const MediaDetail: React.FC = () => {
     );
   }
 
-  if (!data) return null;
+  if (!data)
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+        <p role="alert">{error || 'Media not found.'}</p>
+        <button onClick={() => navigate('/')} className="underline">
+          Back to library
+        </button>
+      </div>
+    );
 
   return (
     <div>
