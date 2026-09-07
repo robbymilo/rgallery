@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchPhotos } from '../services/timeline';
 import { Photo, TimelineResponse, ApiTimelineItem, FilterState, TimelineFilters } from '../types';
 import { VirtualGrid } from '../components/VirtualGrid';
@@ -52,8 +52,7 @@ const App: React.FC = () => {
   const latestScrubDateRef = useRef<Date | null>(null);
   const isScrubbingLoopActiveRef = useRef(false);
 
-  const nextPrefetchRef = useRef<Promise<Photo[]> | null>(null);
-  const prevPrefetchRef = useRef<Promise<Photo[]> | null>(null);
+  const requestControllerRef = useRef(new AbortController());
 
   // Map API photos to Photo objects
   const mapApiPhotos = useCallback((apiPhotos: TimelineResponse['photos']): Photo[] => {
@@ -160,6 +159,7 @@ const App: React.FC = () => {
       if (isLoadingRef.current) return;
       if (offset < 0) return;
 
+      const controller = requestControllerRef.current;
       console.log(`[Timeline] Loading chunk at offset ${offset} (${mode})`);
 
       isLoadingRef.current = true;
@@ -168,7 +168,8 @@ const App: React.FC = () => {
       try {
         const apiFilters = getApiFilters();
         if (error) setError(null);
-        const response = await fetchPhotos(offset.toString(), apiFilters);
+        const response = await fetchPhotos(offset.toString(), apiFilters, controller.signal);
+        if (controller.signal.aborted) return;
         const newPhotos = mapApiPhotos(response.photos);
 
         if (newPhotos.length === 0) return;
@@ -191,216 +192,90 @@ const App: React.FC = () => {
           setMinOffset((prev) => Math.max(0, prev - PAGE_SIZE));
         }
       } catch (e) {
+        if (controller.signal.aborted) return;
         console.error(e);
         setError(e);
       } finally {
-        isLoadingRef.current = false;
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          isLoadingRef.current = false;
+          setIsLoading(false);
+        }
       }
     },
     [mapApiPhotos, getApiFilters]
   );
 
+  // Cancel every request from the previous filters, including pagination and jumps.
   useEffect(() => {
-    if (initCalledRef.current) return;
-    initCalledRef.current = true;
+    requestControllerRef.current.abort();
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    const restorePosition = !initCalledRef.current;
+    latestScrubDateRef.current = null;
+    isScrubbingLoopActiveRef.current = false;
     isLoadingRef.current = true;
+    setIsLoading(true);
+    setError(null);
+    setPhotos([]);
+    setTimeline([]);
+    setTotalCount(0);
+    setMinOffset(0);
+    setMaxOffset(0);
 
-    console.log('[Timeline] Performing initial load');
-
-    const runInit = async () => {
+    const load = async () => {
       try {
         const apiFilters = getApiFilters();
-        if (error) setError(null);
-        const initResponse = await fetchPhotos('0', apiFilters);
-        const globalTimeline = initResponse.timeline || [];
-        setTimeline(globalTimeline);
-        setTotalCount(initResponse.meta.total);
-
-        const params = new URLSearchParams(window.location.search);
-        let dateParam = params.get('date');
-        if (!dateParam) {
-          dateParam = localStorage.getItem(STORAGE_KEY);
-        }
-
-        console.log('[Timeline] dateParam from URL or localStorage:', dateParam);
-
-        let targetIndex = 0;
-        let targetDateObj: Date | null = null;
-
-        if (dateParam && !isNaN(new Date(dateParam).getTime())) {
-          targetDateObj = new Date(dateParam);
-          const dateStr = dateParam.split('T')[0];
-          console.log('[Timeline] Calculating index for date:', dateStr);
-          for (const item of globalTimeline) {
-            if (item.date > dateStr) {
-              targetIndex += item.count;
-            } else {
-              break;
-            }
+        const response = await fetchPhotos('0', apiFilters, controller.signal);
+        if (controller.signal.aborted) return;
+        const histogram = response.timeline || [];
+        let cursor = 0;
+        let targetDate: Date | null = null;
+        if (restorePosition) {
+          const date = new URLSearchParams(window.location.search).get('date') || localStorage.getItem(STORAGE_KEY);
+          if (date && !isNaN(new Date(date).getTime())) {
+            targetDate = new Date(date);
+            const index = histogram
+              .filter((item) => item.date > date.split('T')[0])
+              .reduce((sum, item) => sum + item.count, 0);
+            if (index < response.meta.total) cursor = Math.floor(index / PAGE_SIZE) * PAGE_SIZE;
           }
-          console.log(
-            '[Timeline] Target index:',
-            targetIndex,
-            'cursor:',
-            Math.floor(targetIndex / PAGE_SIZE) * PAGE_SIZE
-          );
         }
-
-        const cursor = Math.floor(targetIndex / PAGE_SIZE) * PAGE_SIZE;
-        let initialPhotos: Photo[] = [];
-
-        if (cursor === 0) {
-          console.log('[Timeline] Using initial response photos (cursor === 0)');
-          initialPhotos = mapApiPhotos(initResponse.photos);
-        } else {
-          console.log('[Timeline] Fetching photos from cursor:', cursor);
-          if (error) setError(null);
-          const response = await fetchPhotos(cursor.toString(), apiFilters);
-          initialPhotos = mapApiPhotos(response.photos);
-        }
-
-        setPhotos(initialPhotos);
+        const page = cursor === 0 ? response : await fetchPhotos(cursor.toString(), apiFilters, controller.signal);
+        if (controller.signal.aborted) return;
+        const loaded = mapApiPhotos(page.photos);
+        setTimeline(histogram);
+        setTotalCount(response.meta.total);
+        setPhotos(loaded);
         setMinOffset(cursor);
-        setMaxOffset(cursor + initialPhotos.length);
-
-        console.log('[Timeline] Initial photos loaded:', initialPhotos.length, 'first date:', initialPhotos[0]?.date);
-
-        if (targetDateObj && initialPhotos.length > 0) {
-          console.log('[Timeline] Setting scroll request for date:', targetDateObj);
-          setScrollToRequest({ date: targetDateObj, timestamp: Date.now() });
-          setVisibleDate(targetDateObj);
-        } else if (initialPhotos.length > 0) {
-          console.log('[Timeline] No target date, using first photo date');
-          setVisibleDate(initialPhotos[0].date);
+        setMaxOffset(cursor + loaded.length);
+        if (loaded.length) {
+          const date = targetDate || loaded[0].date;
+          setScrollToRequest({ date, timestamp: Date.now() });
+          setVisibleDate(date);
         }
+        initCalledRef.current = true;
       } catch (e) {
-        setError(e);
-        console.error('Timeline failed:', e);
+        if (!controller.signal.aborted) setError(e);
       } finally {
-        isLoadingRef.current = false;
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          isLoadingRef.current = false;
+          setIsLoading(false);
+        }
       }
     };
-
-    runInit();
+    void load();
+    return () => controller.abort();
   }, [mapApiPhotos, getApiFilters]);
 
-  // Reset pagination when filters change
-  const prevFiltersRef = useRef(filters);
-  useEffect(() => {
-    // Don't run before initial load completes
-    if (!initCalledRef.current) {
-      prevFiltersRef.current = filters;
-      return;
-    }
-
-    // Skip if filters haven't changed since last run
-    if (JSON.stringify(filters) === JSON.stringify(prevFiltersRef.current)) {
-      return;
-    }
-
-    console.log('[Timeline] Filters changed, resetting pagination', filters);
-
-    const resetWithFilters = async () => {
-      isLoadingRef.current = true;
-      setIsLoading(true);
-
-      try {
-        const apiFilters = getApiFilters();
-        if (error) setError(null);
-        const response = await fetchPhotos('0', apiFilters);
-
-        setTimeline(response.timeline || []);
-        setTotalCount(response.meta.total);
-        const newPhotos = mapApiPhotos(response.photos || []);
-        setPhotos(newPhotos);
-        setMinOffset(0);
-        setMaxOffset(newPhotos.length);
-
-        // Reset to top
-        if (newPhotos.length > 0) {
-          setScrollToRequest({ date: newPhotos[0].date, timestamp: Date.now() });
-          setVisibleDate(newPhotos[0].date);
-        }
-      } catch (e) {
-        console.error('Filter reset failed:', e);
-      } finally {
-        isLoadingRef.current = false;
-        setIsLoading(false);
-      }
-    };
-
-    // Run the reset and then update the previous-filters snapshot
-    resetWithFilters().finally(() => {
-      prevFiltersRef.current = filters;
-    });
-  }, [filters, mapApiPhotos, getApiFilters]);
-
-  const handleEndReached = async () => {
-    if (isLoadingRef.current) return;
-    if (nextPrefetchRef.current) {
-      console.log('[Timeline] Using prefetched next photos');
-
-      isLoadingRef.current = true;
-      setIsLoading(true);
-      try {
-        const newPhotos = await nextPrefetchRef.current;
-        nextPrefetchRef.current = null;
-        if (newPhotos.length > 0) {
-          setPhotos((prev) => {
-            const map = new Map();
-            prev.forEach((p) => map.set(p.id, p));
-            newPhotos.forEach((p) => map.set(p.id, p));
-            return Array.from(map.values());
-          });
-          setMaxOffset((prev) => prev + newPhotos.length);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        isLoadingRef.current = false;
-        setIsLoading(false);
-      }
-    } else {
-      loadChunk(maxOffset, 'append');
-    }
+  const handleEndReached = () => {
+    void loadChunk(maxOffset, 'append');
   };
-
-  const handleStartReached = async () => {
-    if (isLoadingRef.current) return;
-    if (minOffset <= 0) return;
-
-    if (prevPrefetchRef.current) {
-      console.log('[Timeline] Using prefetched previous photos');
-
-      isLoadingRef.current = true;
-      setIsLoading(true);
-      try {
-        const newPhotos = await prevPrefetchRef.current;
-        prevPrefetchRef.current = null;
-        if (newPhotos.length > 0) {
-          setPhotos((prev) => {
-            const map = new Map();
-            newPhotos.forEach((p) => map.set(p.id, p));
-            prev.forEach((p) => map.set(p.id, p));
-            return Array.from(map.values());
-          });
-          setMinOffset((prev) => Math.max(0, prev - PAGE_SIZE));
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        isLoadingRef.current = false;
-        setIsLoading(false);
-      }
-    } else {
-      const newOffset = Math.max(0, minOffset - PAGE_SIZE);
-      loadChunk(newOffset, 'prepend');
-    }
+  const handleStartReached = () => {
+    if (minOffset > 0) void loadChunk(Math.max(0, minOffset - PAGE_SIZE), 'prepend');
   };
 
   const performJump = async (date: Date, updateUrl: boolean) => {
+    const controller = requestControllerRef.current;
     const dateStr = date.toISOString().split('T')[0];
     let index = 0;
 
@@ -419,15 +294,13 @@ const App: React.FC = () => {
       );
       const cursor = Math.floor(index / PAGE_SIZE) * PAGE_SIZE;
       const apiFilters = getApiFilters();
-      const response = await fetchPhotos(cursor.toString(), apiFilters);
+      const response = await fetchPhotos(cursor.toString(), apiFilters, controller.signal);
+      if (controller.signal.aborted) return;
       const newPhotos = mapApiPhotos(response.photos);
 
       setPhotos(newPhotos);
       setMinOffset(cursor);
       setMaxOffset(cursor + newPhotos.length);
-
-      nextPrefetchRef.current = null;
-      prevPrefetchRef.current = null;
 
       setScrollToRequest({
         date: date,
@@ -441,11 +314,14 @@ const App: React.FC = () => {
         window.history.pushState({}, '', newUrl);
       }
     } catch (e) {
+      if (controller.signal.aborted) return;
+      setError(e);
       console.error(e);
     }
   };
 
   const jumpToDate = async (date: Date, updateUrl: boolean = true) => {
+    const controller = requestControllerRef.current;
     setVisibleDate(date);
     latestScrubDateRef.current = date;
 
@@ -456,15 +332,17 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      while (latestScrubDateRef.current) {
+      while (!controller.signal.aborted && latestScrubDateRef.current) {
         const target = latestScrubDateRef.current;
         latestScrubDateRef.current = null;
         await performJump(target, updateUrl);
       }
     } finally {
-      isScrubbingLoopActiveRef.current = false;
-      isLoadingRef.current = false;
-      setIsLoading(false);
+      if (!controller.signal.aborted) {
+        isScrubbingLoopActiveRef.current = false;
+        isLoadingRef.current = false;
+        setIsLoading(false);
+      }
     }
   };
 
@@ -480,13 +358,15 @@ const App: React.FC = () => {
   };
 
   const handleRefresh = useCallback(async () => {
+    const controller = requestControllerRef.current;
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
     setIsLoading(true);
     try {
       const apiFilters = getApiFilters();
       if (error) setError(null);
-      const response = await fetchPhotos('0', apiFilters);
+      const response = await fetchPhotos('0', apiFilters, controller.signal);
+      if (controller.signal.aborted) return;
       const newPhotos = mapApiPhotos(response.photos || []);
       setTimeline(response.timeline || []);
       setTotalCount(response.meta.total);
@@ -498,10 +378,14 @@ const App: React.FC = () => {
         setVisibleDate(newPhotos[0].date);
       }
     } catch (e) {
+      if (controller.signal.aborted) return;
+      setError(e);
       console.error('Refresh failed:', e);
     } finally {
-      isLoadingRef.current = false;
-      setIsLoading(false);
+      if (!controller.signal.aborted) {
+        isLoadingRef.current = false;
+        setIsLoading(false);
+      }
     }
   }, [getApiFilters, mapApiPhotos, error]);
 

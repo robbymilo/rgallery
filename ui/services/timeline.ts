@@ -2,7 +2,8 @@ import { TimelineResponse, TimelineFilters } from '../types';
 
 export const fetchPhotos = async (
   cursorOffsetStr: string | null,
-  filters?: TimelineFilters
+  filters?: TimelineFilters,
+  signal?: AbortSignal
 ): Promise<TimelineResponse> => {
   const url = new URL('/api/timeline', window.location.origin);
 
@@ -28,7 +29,7 @@ export const fetchPhotos = async (
     if (filters.focallength35) url.searchParams.set('focallength35', filters.focallength35.toString());
   }
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { signal });
 
   if (!res.ok) {
     throw new Error(`API Error: ${res.status} ${res.statusText}`);
