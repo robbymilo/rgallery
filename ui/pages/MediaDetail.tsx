@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { ApiResponse, MediaItem, ViewMode } from '../types';
+import { ApiResponse, ViewMode } from '../types';
 import { getMedia } from '../services/media';
 import ImageViewer from '../components/ImageViewer';
 import ThumbnailStrip from '../components/ThumbnailStrip';
@@ -28,7 +28,6 @@ const MediaDetail: React.FC = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    setData(null);
     setError(null);
     if (!mediaID || !/^\d+$/.test(mediaID) || Number(mediaID) <= 0 || Number(mediaID) > 0xffffffff) {
       setError('Invalid media URL.');
@@ -73,18 +72,18 @@ const MediaDetail: React.FC = () => {
   }, [data?.media?.hash]);
 
   const handleNext = useCallback(() => {
-    if (data && data.next.length > 0) {
+    if (data && !isLoading && Number(data.media.hash) === Number(mediaID) && data.next.length > 0) {
       const params = new URLSearchParams(filters).toString();
       navigate(`/media/${data.next[0].hash}${params ? `?${params}` : ''}`);
     }
-  }, [data, filters, navigate]);
+  }, [data, isLoading, mediaID, filters, navigate]);
 
   const handlePrev = useCallback(() => {
-    if (data && data.previous.length > 0) {
+    if (data && !isLoading && Number(data.media.hash) === Number(mediaID) && data.previous.length > 0) {
       const params = new URLSearchParams(filters).toString();
       navigate(`/media/${data.previous[data.previous.length - 1].hash}${params ? `?${params}` : ''}`);
     }
-  }, [data, filters, navigate]);
+  }, [data, isLoading, mediaID, filters, navigate]);
 
   const toggleFullscreen = useCallback(() => {
     setViewMode((prev) => (prev === ViewMode.NORMAL ? ViewMode.FULLSCREEN : ViewMode.NORMAL));
@@ -131,7 +130,7 @@ const MediaDetail: React.FC = () => {
     );
   }
 
-  if (!data)
+  if (error || !data)
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
         <p role="alert">{error || 'Media not found.'}</p>
