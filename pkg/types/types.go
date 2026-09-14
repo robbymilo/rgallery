@@ -42,7 +42,6 @@ type TranscodeConfig struct {
 	MaxRate      int
 	AudioBitrate int
 	Workers      int
-	CacheMB      int
 }
 
 type MediaItems []Media

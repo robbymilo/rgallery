@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -43,7 +41,6 @@ type Diagnostics struct {
 	Capability
 	Workers           int         `json:"workers"`
 	CacheBytes        int64       `json:"cacheBytes"`
-	CacheLimitBytes   int64       `json:"cacheLimitBytes"`
 	Jobs              []JobStatus `json:"jobs"`
 	Recent            []JobStatus `json:"recent"`
 	LastEncodeSeconds float64     `json:"lastEncodeSeconds"`
@@ -83,7 +80,7 @@ func (m *Manager) LogConfiguration() {
 	})
 }
 
-// NewManager starts the encoding workers and cache cleanup loop.
+// NewManager starts the encoding workers.
 func NewManager(c Conf) *Manager {
 	if c.Logger == nil {
 		c.Logger = slog.Default()
@@ -100,20 +97,6 @@ func NewManager(c Conf) *Manager {
 		m.wg.Add(1)
 		go m.worker()
 	}
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-m.stop:
-				return
-			case <-ticker.C:
-				m.Cleanup()
-			}
-		}
-	}()
 	return m
 }
 
@@ -303,6 +286,7 @@ func (m *Manager) Open(ctx context.Context, path string, hash uint32) (*Video, e
 			return nil, fmt.Errorf("source changed while probing; retry playback")
 		}
 	}
+	m.cleanupVersions(filepath.Join(m.root, fmt.Sprint(hash)))
 	outputVersion := m.outputVersion(source.Version)
 	dir := filepath.Join(m.root, fmt.Sprint(hash), outputVersion)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -414,7 +398,7 @@ func (m *Manager) File(ctx context.Context, v *Video, p Profile, index, priority
 	return &CachedFile{File: f, release: release}, nil
 }
 
-// touch saves source details and updates the last access time for cleanup.
+// touch saves source details for cleanup.
 // Call it while holding the cache lock.
 func (v *Video) touch() {
 	path := filepath.Join(v.Dir, "source.json")
@@ -433,13 +417,11 @@ func (v *Video) touch() {
 			_ = os.Remove(tmp)
 		}
 	}
-	now := time.Now()
-	_ = os.Chtimes(v.Dir, now, now)
 }
 
 // Diagnostics reports encoder status, jobs, and cache usage.
 func (m *Manager) Diagnostics() Diagnostics {
-	d := Diagnostics{Capability: m.encoder.detect(m.conf), Workers: Settings(m.conf).Workers, CacheLimitBytes: int64(Settings(m.conf).CacheMB) * 1024 * 1024, Jobs: []JobStatus{}, Recent: []JobStatus{}}
+	d := Diagnostics{Capability: m.encoder.detect(m.conf), Workers: Settings(m.conf).Workers, Jobs: []JobStatus{}, Recent: []JobStatus{}}
 	m.mu.Lock()
 	for _, j := range m.jobs {
 		state := "queued"
@@ -463,91 +445,42 @@ func (m *Manager) Diagnostics() Diagnostics {
 	return d
 }
 
-// Cleanup removes old or excess cache entries.
-// File locks protect active readers and encoders across processes.
+// Cleanup removes cache entries whose source or encoding settings changed.
 func (m *Manager) Cleanup() {
 	if !m.cleanupMu.TryLock() {
 		return
 	}
 	defer m.cleanupMu.Unlock()
-	type candidate struct {
-		path     string
-		size     int64
-		modified time.Time
-		stale    bool
-		partial  bool
-	}
-	var all []candidate
-	var total int64
 	hashes, _ := os.ReadDir(m.root)
 	for _, hash := range hashes {
-		if !hash.IsDir() {
-			continue
-		}
-		versions, _ := os.ReadDir(filepath.Join(m.root, hash.Name()))
-		for _, version := range versions {
-			if !version.IsDir() {
-				continue
-			}
-			path := filepath.Join(m.root, hash.Name(), version.Name())
-			info, err := version.Info()
-			if err != nil {
-				continue
-			}
-			item := candidate{path: path, modified: info.ModTime()}
-			_ = filepath.WalkDir(path, func(_ string, e os.DirEntry, err error) error {
-				if err == nil && !e.IsDir() {
-					if info, err := e.Info(); err == nil {
-						item.size += info.Size()
-						if strings.HasPrefix(e.Name(), ".encoding-") || (strings.HasPrefix(e.Name(), ".remux-") || strings.HasPrefix(e.Name(), ".source-")) {
-							item.partial = true
-						}
-					}
-				}
-				return nil
-			})
-			var source struct {
-				Path    string
-				Version string
-			}
-			b, err := os.ReadFile(filepath.Join(path, "source.json"))
-			if err == nil && json.Unmarshal(b, &source) == nil {
-				current, err := SourceVersion(source.Path)
-				item.stale = errors.Is(err, os.ErrNotExist) || (err == nil && (current != source.Version || m.outputVersion(source.Version) != version.Name()))
-			}
-			if time.Since(item.modified) > 7*24*time.Hour {
-				item.stale = true
-			}
-			all = append(all, item)
-			total += item.size
+		if hash.IsDir() {
+			m.cleanupVersions(filepath.Join(m.root, hash.Name()))
 		}
 	}
-	sort.Slice(all, func(i, j int) bool {
-		if all[i].stale != all[j].stale {
-			return all[i].stale
-		}
-		return all[i].modified.Before(all[j].modified)
-	})
-	limit := int64(Settings(m.conf).CacheMB) * 1024 * 1024
-	for _, item := range all {
-		if !item.stale && total <= limit && !item.partial {
+}
+
+// cleanupVersions removes obsolete versions while protecting active files.
+func (m *Manager) cleanupVersions(dir string) {
+	versions, _ := os.ReadDir(dir)
+	for _, version := range versions {
+		if !version.IsDir() {
 			continue
 		}
-		unlock, err := fileLock(context.Background(), item.path+".lock", true, false)
+		path := filepath.Join(dir, version.Name())
+		unlock, err := fileLock(context.Background(), path+".lock", true, false)
 		if err != nil {
 			continue
 		}
-		if item.stale || total > limit {
-			if err := os.RemoveAll(item.path); err == nil {
-				total -= item.size
+		var source struct {
+			Path    string
+			Version string
+		}
+		b, err := os.ReadFile(filepath.Join(path, "source.json"))
+		if err == nil && json.Unmarshal(b, &source) == nil {
+			current, err := SourceVersion(source.Path)
+			if errors.Is(err, os.ErrNotExist) || (err == nil && (current != source.Version || m.outputVersion(source.Version) != version.Name())) {
+				_ = os.RemoveAll(path)
 			}
-		} else if item.partial {
-			_ = filepath.WalkDir(item.path, func(path string, e os.DirEntry, err error) error {
-				if err == nil && !e.IsDir() && (strings.HasPrefix(e.Name(), ".encoding-") || (strings.HasPrefix(e.Name(), ".remux-") || strings.HasPrefix(e.Name(), ".source-"))) {
-					_ = os.Remove(path)
-				}
-				return nil
-			})
 		}
 		unlock()
 	}
@@ -596,7 +529,6 @@ func Pregenerate(ctx context.Context, original string, hash uint32, c Conf) erro
 			}
 			_ = f.Close()
 		}
-		m.Cleanup()
 	}
 	return nil
 }

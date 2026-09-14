@@ -27,8 +27,8 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 type UserCredentials = types.UserCredentials
 
 func validateVideoFlags(cCtx *cli.Context) error {
-	if cCtx.Int("transcode-workers") < 1 || cCtx.Int("transcode-cache-mb") < 64 || cCtx.Int("transcode-resolution") < 2 {
-		return fmt.Errorf("transcode-workers must be at least 1, transcode-cache-mb at least 64, and transcode-resolution at least 2")
+	if cCtx.Int("transcode-workers") < 1 || cCtx.Int("transcode-resolution") < 2 {
+		return fmt.Errorf("transcode-workers must be at least 1, transcode-resolution at least 2")
 	}
 	return transcode.Validate(Conf{TranscodeResolution: cCtx.Int("transcode-resolution"), Transcode: config.VideoConf(*cCtx)})
 }
@@ -98,7 +98,6 @@ func SetupApp(Commit, Tag string) {
 		&cli.IntFlag{Name: "transcode-maxrate", Usage: "Video bitrate ceiling in kbps across all profiles. 0 uses each profile's ceiling.", EnvVars: []string{"RGALLERY_TRANSCODE_MAXRATE"}},
 		&cli.IntFlag{Name: "transcode-audio-bitrate", Usage: "Audio bitrate in kbps (32–320). 0 uses each profile's default.", EnvVars: []string{"RGALLERY_TRANSCODE_AUDIO_BITRATE"}},
 		&cli.IntFlag{Name: "transcode-workers", Value: 2, Usage: "Maximum concurrent video jobs (1–16).", EnvVars: []string{"RGALLERY_TRANSCODE_WORKERS"}},
-		&cli.IntFlag{Name: "transcode-cache-mb", Value: 10240, Usage: "Video cache budget in MiB (minimum 64). Active output is protected during eviction.", EnvVars: []string{"RGALLERY_TRANSCODE_CACHE_MB"}},
 		&cli.BoolFlag{
 			Name:  "pregenerate-thumbs",
 			Usage: "Generate image thumbnails, video posters, and short video previews during scan. Full playback encoding is controlled by transcode-mode.",

@@ -90,6 +90,6 @@ func VideoConf(cCtx cli.Context) types.TranscodeConfig {
 		Encoder: cCtx.String("transcode-encoder"), Device: cCtx.String("transcode-device"),
 		CRF: cCtx.Int("transcode-crf"), Preset: cCtx.String("transcode-preset"),
 		MaxRate: cCtx.Int("transcode-maxrate"), AudioBitrate: cCtx.Int("transcode-audio-bitrate"),
-		Workers: cCtx.Int("transcode-workers"), CacheMB: cCtx.Int("transcode-cache-mb"),
+		Workers: cCtx.Int("transcode-workers"),
 	}
 }

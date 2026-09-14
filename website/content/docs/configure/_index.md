@@ -44,7 +44,6 @@ GLOBAL OPTIONS:
    --transcode-maxrate value        Video bitrate ceiling in kbps across all profiles. 0 uses each profile's ceiling. (default: 0) [$RGALLERY_TRANSCODE_MAXRATE]
    --transcode-audio-bitrate value  Audio bitrate in kbps (32–320). 0 uses each profile's default. (default: 0) [$RGALLERY_TRANSCODE_AUDIO_BITRATE]
    --transcode-workers value        Maximum concurrent video jobs (1–16). (default: 2) [$RGALLERY_TRANSCODE_WORKERS]
-   --transcode-cache-mb value       Video cache budget in MiB (minimum 64). Active output is protected during eviction. (default: 10240) [$RGALLERY_TRANSCODE_CACHE_MB]
    --pregenerate-thumbs             Generate image thumbnails, video posters, and short video previews during scan. Full playback encoding is controlled by transcode-mode. (default: true)
    --resize_service value           URL for resize service. [$RGALLERY_RESIZE_SERVICE]
    --location-service value         URL for reverse geocode service. [$RGALLERY_LOCATION_SERVICE]

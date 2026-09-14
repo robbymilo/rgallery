@@ -7,7 +7,6 @@ interface Diagnostics {
   fallback?: string;
   workers: number;
   cacheBytes: number;
-  cacheLimitBytes: number;
   lastEncodeSeconds: number;
   lastEncodeSpeed: number;
   jobs: { id: string; state: string; seconds: number }[];
@@ -55,7 +54,7 @@ const VideoDiagnostics: React.FC = () => {
           {data.fallback && <p>{data.fallback}</p>}
           <p>
             {data.workers} workers · {data.jobs.length} active or queued jobs · Cache{' '}
-            {(data.cacheBytes / 1048576).toFixed(1)} / {(data.cacheLimitBytes / 1048576).toFixed(0)} MiB
+            {(data.cacheBytes / 1048576).toFixed(1)} MiB
           </p>
           {data.lastEncodeSeconds > 0 && (
             <p>

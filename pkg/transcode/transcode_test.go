@@ -57,7 +57,7 @@ func TestDimensionsAndProfileBudgets(t *testing.T) {
 			t.Fatalf("profile exceeds cap: %+v", p)
 		}
 	}
-	for _, cfg := range []types.TranscodeConfig{{Profile: "invalid"}, {Mode: "invalid"}, {Encoder: "invalid"}, {CRF: 60, Profile: "small"}, {Workers: 17}, {MaxRate: -1}, {CacheMB: 2}} {
+	for _, cfg := range []types.TranscodeConfig{{Profile: "invalid"}, {Mode: "invalid"}, {Encoder: "invalid"}, {CRF: 60, Profile: "small"}, {Workers: 17}, {MaxRate: -1}} {
 		if Validate(Conf{Transcode: cfg}) == nil {
 			t.Fatalf("accepted invalid configuration: %+v", cfg)
 		}
@@ -458,9 +458,9 @@ func TestEvictionProtectsActiveFiles(t *testing.T) {
 	}
 }
 
-// TestCacheRestartRecoveryAndBudget checks cache recovery and size limits.
-func TestCacheRestartRecoveryAndBudget(t *testing.T) {
-	c := Conf{Cache: t.TempDir(), Transcode: types.TranscodeConfig{Encoder: "cpu", CacheMB: 64}}
+// TestCacheRetention checks that old and large cache files survive cleanup.
+func TestCacheRetention(t *testing.T) {
+	c := Conf{Cache: t.TempDir(), Transcode: types.TranscodeConfig{Encoder: "cpu"}}
 	m := NewManager(c)
 	path := fixture(t, false)
 	v, err := m.Open(context.Background(), path, 1)
@@ -475,15 +475,11 @@ func TestCacheRestartRecoveryAndBudget(t *testing.T) {
 	output := f.Name()
 	_ = f.Close()
 	m.Close()
-	orphan := filepath.Join(v.Dir, "small", ".encoding-abandoned")
-	if err := os.WriteFile(orphan, []byte("partial"), 0600); err != nil {
-		t.Fatal(err)
-	}
 	m = NewManager(c)
 	defer m.Close()
-	m.Cleanup()
-	if _, err := os.Stat(orphan); !errors.Is(err, os.ErrNotExist) || !validOutput(output) {
-		t.Fatalf("restart cleanup lost completed output or retained partial output: %v", err)
+	old := time.Now().Add(-30 * 24 * time.Hour)
+	if err := os.Chtimes(v.Dir, old, old); err != nil {
+		t.Fatal(err)
 	}
 	v2, err := m.Open(context.Background(), path, 2)
 	if err != nil {
@@ -496,13 +492,26 @@ func TestCacheRestartRecoveryAndBudget(t *testing.T) {
 	defer func() { _ = active.Close() }()
 	// Use sparse files to test cache sizes without a large video.
 	for _, path := range []string{output, active.Name()} {
-		if err := os.Truncate(path, 40*1024*1024); err != nil {
+		if err := os.Truncate(path, 11*1024*1024*1024); err != nil {
 			t.Fatal(err)
 		}
 	}
 	m.Cleanup()
-	if validOutput(output) || !validOutput(active.Name()) {
-		t.Fatal("budget eviction did not remove the inactive asset and preserve the active one")
+	if !validOutput(output) || !validOutput(active.Name()) {
+		t.Fatal("cleanup removed unchanged cached output")
+	}
+	changed := time.Now().Add(time.Hour)
+	if err := os.Chtimes(path, changed, changed); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Open(context.Background(), path, 1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(v.Dir); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("opening a changed source retained its old cache: %v", err)
+	}
+	if !validOutput(active.Name()) {
+		t.Fatal("source change removed active output")
 	}
 }
 

@@ -41,9 +41,6 @@ func Settings(c Conf) types.TranscodeConfig {
 	if s.Workers == 0 {
 		s.Workers = 2
 	}
-	if s.CacheMB == 0 {
-		s.CacheMB = 10240
-	}
 	return s
 }
 
@@ -73,9 +70,6 @@ func Validate(c Conf) error {
 	}
 	if s.Workers < 1 || s.Workers > 16 {
 		return fmt.Errorf("transcode-workers must be between 1 and 16")
-	}
-	if s.CacheMB < 64 {
-		return fmt.Errorf("transcode-cache-mb must be at least 64")
 	}
 	switch s.Preset {
 	case "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow":

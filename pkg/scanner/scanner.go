@@ -71,6 +71,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		// create a cancel channel for this scan
 		resetCancelChan(make(chan struct{}))
 		transcode.For(c).LogConfiguration()
+		defer transcode.For(c).Cleanup()
 
 		var unsupportedPaths []string
 
