@@ -84,20 +84,13 @@ func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 	color := dominantcolor.Hex(dominantcolor.Find(img))
 	media.Color = color
 
-	// pre-transcode image
-	if c.PreGenerateThumb && regenThumb {
-		index_file := transcode.CreateHLSIndexFilePath(media.Hash, c)
-		err = transcode.TranscodeWithLock(absolute_path, index_file, media.Hash, c)
-		if err != nil {
-			return fmt.Errorf("error transcoding video: %v", err)
-		}
-	}
-
 	err = insertMediaItem(media, c)
 	if err != nil {
 		fmt.Printf("error inserting image: %s %s\n", media.Path, err)
 		return err
 	}
+
+	pregenerateVideo(absolute_path, media.Hash, c)
 
 	cache.Flush()
 	middleware.RemoveEtags()
@@ -110,6 +103,18 @@ func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 
 	return nil
 
+}
+
+// Generate previews and playback as configured. Keep the library entry if encoding fails.
+func pregenerateVideo(path string, hash uint32, c Conf) {
+	if !c.PreGenerateThumb && transcode.Settings(c).Mode == "ondemand" {
+		return
+	}
+	ctx, cancel := videoScanContext()
+	defer cancel()
+	if err := transcode.Pregenerate(ctx, path, hash, c); err != nil && ctx.Err() == nil {
+		c.Logger.Warn("video pregeneration failed", "file", path, "error", err)
+	}
 }
 
 // insertMediaItem coordinates inserting a media item, and it's tags, folders and their relationships to the database.

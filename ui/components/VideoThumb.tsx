@@ -1,95 +1,102 @@
-import React, { useRef, useState } from 'react';
-import Hls from 'hls.js';
+import React, { useEffect, useRef, useState } from 'react';
+
 interface VideoThumbProps {
   hlsUrl: string;
   poster?: string;
   alt?: string;
 }
 
+// Plays a short, silent preview while a gallery item is hovered.
 const VideoThumb: React.FC<VideoThumbProps> = ({ hlsUrl, poster, alt }) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const hlsInstanceRef = useRef<Hls | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [canShowVideo, setCanShowVideo] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hoveredRef = useRef(false);
+  const requestRef = useRef(0);
+  const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handlePlay = () => setIsPlaying(true);
-  const handlePause = () => setIsPlaying(false);
-  const handleCanPlay = () => setCanShowVideo(true);
-  const handleLoadedData = () => setCanShowVideo(true);
-
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-    if (!videoRef.current) return;
-    if (Hls && Hls.isSupported()) {
-      if (!hlsInstanceRef.current) {
-        const hls = new Hls({ maxBufferLength: 3, debug: false });
-        hlsInstanceRef.current = hls;
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          videoRef.current?.play?.();
-        });
-
-        hls.on(Hls.Events.ERROR, (e, data) => {
-          console.error('HLS error', data);
-        });
-
-        hls.loadSource(hlsUrl);
-        hls.attachMedia(videoRef.current);
-      }
+  // Stops the preview and releases its media source.
+  const stop = () => {
+    hoveredRef.current = false;
+    requestRef.current++;
+    const video = videoRef.current;
+    if (video) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
     }
   };
 
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    setIsPlaying(false);
-    setCanShowVideo(false);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
-    if (hlsInstanceRef.current) {
-      hlsInstanceRef.current.destroy();
-      hlsInstanceRef.current = null;
-    }
-    if (videoRef.current) {
-      try {
-        if (videoRef.current.src) videoRef.current.removeAttribute('src');
-      } catch (e) {}
-    }
-  };
+  useEffect(() => () => stop(), [hlsUrl]);
 
-  const showPoster = !(canShowVideo && isPlaying);
+  // Starts a hover preview unless reduced motion is enabled.
+  const hover = () => {
+    stop();
+    setPlaying(false);
+    setLoading(false);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const video = videoRef.current;
+    if (!video) return;
+    hoveredRef.current = true;
+    const request = requestRef.current;
+    setLoading(true);
+    video.src = hlsUrl.replace(/\/index\.m3u8(?:\?.*)?$/, '/preview.mp4');
+    void video.play().catch(() => {
+      if (request !== requestRef.current) return;
+      setPlaying(false);
+      setLoading(false);
+    });
+  };
 
   return (
-    <div className="relative h-full w-full" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+    <div
+      className="relative h-full w-full"
+      onMouseEnter={hover}
+      onMouseLeave={() => {
+        stop();
+        setPlaying(false);
+        setLoading(false);
+      }}
+    >
       {poster && (
         <img
           src={poster}
           alt={alt}
-          className={`pointer-events-none absolute inset-0 z-10 h-full w-full object-cover opacity-0 transition-opacity duration-500`}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
           draggable={false}
-          onLoad={(e) => (e.currentTarget.style.opacity = '1')}
         />
       )}
       <video
         ref={videoRef}
-        className={`absolute inset-0 z-20 h-full w-full object-cover ${canShowVideo && isPlaying ? 'opacity-100' : 'opacity-0'}`}
-        style={{ transition: 'none' }}
         muted
         loop
         playsInline
-        autoPlay
-        preload="metadata"
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onCanPlay={handleCanPlay}
-        onLoadedData={handleLoadedData}
+        preload="none"
+        aria-label={alt || 'Video preview'}
+        className={`pointer-events-none absolute inset-0 h-full w-full object-cover ${playing ? 'opacity-100' : 'opacity-0'}`}
+        onPlaying={() => {
+          if (!hoveredRef.current) return;
+          setPlaying(true);
+          setLoading(false);
+        }}
+        onWaiting={() => {
+          if (hoveredRef.current) setLoading(true);
+        }}
+        onError={() => {
+          setPlaying(false);
+          setLoading(false);
+        }}
       />
-      {!isPlaying && (
-        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-black/50">
-            <div className="ml-1 h-0 w-0 border-t-8 border-b-8 border-l-12 border-t-transparent border-b-transparent border-l-white"></div>
+      {(!playing || loading) && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div
+            role={loading ? 'status' : undefined}
+            aria-label={loading ? 'Loading video preview' : undefined}
+            aria-hidden={loading ? undefined : true}
+            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-black/50 ${loading ? 'animate-spin border-t-transparent' : ''}`}
+          >
+            {!loading && (
+              <div className="ml-1 h-0 w-0 border-t-8 border-b-8 border-l-12 border-t-transparent border-b-transparent border-l-white" />
+            )}
           </div>
         </div>
       )}

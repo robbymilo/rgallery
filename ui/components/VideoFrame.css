@@ -1,0 +1,36 @@
+.gallery-video-stage {
+  display: grid;
+  place-items: center;
+  container-type: size;
+  outline: none;
+  width: 100%;
+  height: 100%;
+  color: white;
+}
+
+.gallery-video-player {
+  position: relative;
+  container-type: inline-size;
+  outline: none;
+  border: 0;
+  aspect-ratio: var(--video-aspect-ratio);
+  width: min(100cqw, calc(100cqh * var(--video-aspect-ratio)));
+}
+
+.gallery-video-poster,
+.gallery-video-media {
+  display: block;
+  outline: none;
+  border: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gallery-video-poster {
+  object-fit: contain;
+}
+
+.gallery-video-media {
+  position: relative;
+  cursor: pointer;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import React, { lazy, Suspense, useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { MediaItem, ViewMode } from '../types';
 import ZoomIn from '../svg/zoom-in.svg?react';
 import ZoomOut from '../svg/zoom-out.svg?react';
@@ -7,6 +7,8 @@ import Right from '../svg/right.svg?react';
 import Fullscreen from '../svg/fullscreen.svg?react';
 import FullscreenClose from '../svg/fullscreen-close.svg?react';
 import Download from '../svg/download.svg?react';
+import VideoPoster from './VideoPoster';
+const VideoPlayer = lazy(() => import('./VideoPlayer'));
 
 interface ImageViewerProps {
   media: MediaItem;
@@ -29,6 +31,7 @@ interface MediaSlideProps {
 
 const MediaSlide: React.FC<MediaSlideProps> = ({ item, isActive, zoomLevel, pan, suppressTransition, isDragging }) => {
   const [loading, setLoading] = useState<boolean>(true);
+  const [posterRatio, setPosterRatio] = useState(0);
 
   useEffect(() => {
     // Reset loading whenever the item changes
@@ -39,28 +42,6 @@ const MediaSlide: React.FC<MediaSlideProps> = ({ item, isActive, zoomLevel, pan,
 
   const isVideo = item.type === 'video';
   const isZoomed = isActive && zoomLevel > 1;
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  useEffect(() => {
-    if (!isVideo || !item.hash) return;
-    if (typeof window === 'undefined') return;
-
-    const Hls = window.Hls || (typeof require !== 'undefined' ? require('hls.js') : null);
-    if (Hls && Hls.isSupported && Hls.isSupported() && videoRef.current) {
-      const hls = new Hls({
-        debug: false,
-        maxBufferLength: 3,
-      });
-      hls.loadSource(`/api/transcode/${item.hash}/index.m3u8`);
-      hls.attachMedia(videoRef.current);
-      hls.on(Hls.Events.MEDIA_ATTACHED, function () {});
-      return () => {
-        hls.destroy();
-      };
-    } else if (videoRef.current && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-      videoRef.current.src = `/transcode/${item.hash}/index.m3u8`;
-    }
-  }, [isVideo, item.hash]);
 
   const style: React.CSSProperties = isZoomed
     ? {
@@ -80,15 +61,27 @@ const MediaSlide: React.FC<MediaSlideProps> = ({ item, isActive, zoomLevel, pan,
   return (
     <div className="relative flex h-full w-full items-center justify-center">
       {isVideo ? (
-        <video
-          id={`video-${item.hash}`}
-          ref={videoRef}
-          className={className}
-          style={style}
-          controls
-          onLoadedData={() => setLoading(false)}
-          onError={() => setLoading(false)}
-        />
+        <>
+          <VideoPoster
+            src={`/api/img/${item.hash}/800`}
+            title={item.path}
+            aspectRatio={item.width / item.height}
+            onAspectRatio={setPosterRatio}
+          />
+          {isActive && (
+            <div className="absolute inset-0">
+              <Suspense fallback={null}>
+                <VideoPlayer
+                  hash={item.hash}
+                  active={isActive}
+                  poster={`/api/img/${item.hash}/800`}
+                  title={item.path}
+                  aspectRatio={posterRatio || item.width / item.height}
+                />
+              </Suspense>
+            </div>
+          )}
+        </>
       ) : (
         <>
           <img
@@ -108,7 +101,7 @@ const MediaSlide: React.FC<MediaSlideProps> = ({ item, isActive, zoomLevel, pan,
         </>
       )}
 
-      {loading && (
+      {loading && !isVideo && (
         <div
           className="pointer-events-none absolute inset-0 flex items-center justify-center"
           aria-hidden={false}
@@ -148,6 +141,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef<number | null>(null);
+  const videoGestureRef = useRef(false);
   const dragStartPan = useRef<{ x: number; y: number; y_start?: number }>({ x: 0, y: 0 });
   // We need to track the initial touch/mouse position to calculate total distance moved
   // to differentiate between a click and a drag.
@@ -169,6 +163,10 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     setDragOffset(0);
     setTransitionEnabled(false);
     setIsDragging(false);
+    dragStartX.current = null;
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+    clickTimeoutRef.current = null;
+    lastTapTimeRef.current = 0;
   }, [media.hash]);
 
   // Sync Zoom state with ViewMode: If we exit fullscreen, we must zoom out.
@@ -182,6 +180,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   }, [viewMode]);
 
   const toggleZoom = useCallback(() => {
+    if (media.type === 'video') return;
     if (zoomLevel === 1) {
       setZoomLevel(2.5); // Value > 1 triggers "Zoomed" state in MediaSlide
       // Automatically enter fullscreen when zooming in
@@ -196,13 +195,14 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         onToggleFullscreen();
       }
     }
-  }, [zoomLevel, viewMode, onToggleFullscreen]);
+  }, [media.type, zoomLevel, viewMode, onToggleFullscreen]);
 
   const onMouseDown = (e: React.MouseEvent) => {
     if (Date.now() < ignoreMouseUntilRef.current) return;
     if (e.button !== 0) return;
 
     e.preventDefault();
+    videoGestureRef.current = media.type === 'video' || !!(e.target as HTMLElement).closest('[data-video-player]');
     dragStartX.current = e.clientX;
     initialClientPos.current = { x: e.clientX, y: e.clientY };
     dragStartPan.current.y_start = e.clientY;
@@ -240,6 +240,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
   const onTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
+    videoGestureRef.current = media.type === 'video' || !!(e.target as HTMLElement).closest('[data-video-player]');
     dragStartX.current = touch.clientX;
     initialClientPos.current = { x: touch.clientX, y: touch.clientY };
     dragStartPan.current.y_start = touch.clientY;
@@ -271,6 +272,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   };
 
   const onTouchEnd = (e: React.TouchEvent) => {
+    if (!isDragging || dragStartX.current === null) return;
     const touch = e.changedTouches[0];
     const clientX = touch.clientX;
     const clientY = touch.clientY;
@@ -286,7 +288,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     const dist = Math.sqrt(dx * dx + dy * dy);
     const isDoubleTap = timeSinceLastTap > 0 && timeSinceLastTap < 300 && dist < 30;
 
-    if (isDoubleTap) {
+    if (isDoubleTap && !videoGestureRef.current) {
       // clear pending single-tap handler
       if (clickTimeoutRef.current) {
         clearTimeout(clickTimeoutRef.current);
@@ -315,6 +317,13 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     );
 
     const isDrag = dist > 5;
+
+    // Video taps belong to playback; only a drag should affect the gallery.
+    if (!isDrag && videoGestureRef.current) {
+      setDragOffset(0);
+      dragStartX.current = null;
+      return;
+    }
 
     if (!isDrag) {
       // Handle Click / Tap
@@ -367,11 +376,12 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
       setTransitionEnabled(true);
 
-      if (dragOffset > threshold && prevItem) {
+      const offset = clientX - initialClientPos.current.x;
+      if (offset > threshold && prevItem) {
         // Swipe Right -> Prev
         setDragOffset(width);
         setTimeout(onPrev, 300);
-      } else if (dragOffset < -threshold && nextItem) {
+      } else if (offset < -threshold && nextItem) {
         // Swipe Left -> Next
         setDragOffset(-width);
         setTimeout(onNext, 300);
@@ -425,7 +435,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     <div
       ref={containerRef}
       className={containerClass}
-      style={containerStyle}
+      style={{ ...containerStyle, touchAction: zoomLevel > 1 ? 'none' : 'pan-y' }}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
@@ -433,6 +443,11 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={() => {
+        setIsDragging(false);
+        setDragOffset(0);
+        dragStartX.current = null;
+      }}
     >
       {/* Slider track */}
       <div
@@ -528,6 +543,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
           }}
           className="rounded-lg border border-zinc-300 bg-zinc-200 p-2.5 text-black shadow-lg backdrop-blur-md transition-colors hover:bg-zinc-300 dark:border-white/10 dark:bg-black/50 dark:text-white dark:hover:bg-white/10"
           title="Zoom (Z)"
+          hidden={media.type === 'video'}
         >
           {zoomLevel > 1 ? <ZoomOut /> : <ZoomIn />}
         </button>

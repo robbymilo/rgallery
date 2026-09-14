@@ -2,6 +2,7 @@ import React from 'react';
 import { MediaItem } from '../types';
 import Star from '../svg/star.svg?react';
 import MapComponent from './MapComponent';
+import { displayMediaDate } from '../lib/date';
 
 interface ExifPanelProps {
   media: MediaItem;
@@ -71,58 +72,8 @@ const ColorRow = ({ color }: { color?: string }) => {
 };
 
 const ExifPanel: React.FC<ExifPanelProps> = ({ media }) => {
-  // displayDate takes a local time and offset and returns a date string in RFC1123Z format.
-  const displayDate = (d: string, o: number) => {
-    // https://stackoverflow.com/questions/7403486/add-or-subtract-timezone-difference-to-javascript-date
-    const targetTime = new Date(d);
-    if (o) {
-      const timeZoneFromDB = o / 60; //time zone value from database
-      //get the timezone offset from local time in minutes
-      const tzDifference = timeZoneFromDB * 60 + targetTime.getTimezoneOffset();
-      //convert the offset to milliseconds, add to targetTime, and make a new Date
-      const offsetTime = new Date(targetTime.getTime() + tzDifference * 60 * 1000);
-
-      const dayString = new Intl.DateTimeFormat('en-GB', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'long',
-        day: '2-digit',
-      }).format(offsetTime);
-
-      const timeString = new Intl.DateTimeFormat('en-GB', {
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric',
-        fractionalSecondDigits: 3,
-        hour12: false,
-      }).format(offsetTime);
-
-      return `${dayString} ${timeString}`;
-    } else {
-      // the UTC offset of the photo is unknown, so display it as is.
-      const dayString = new Intl.DateTimeFormat('en-GB', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'long',
-        day: '2-digit',
-        timeZone: 'GMT',
-      }).format(targetTime);
-
-      const timeString = new Intl.DateTimeFormat('en-GB', {
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric',
-        fractionalSecondDigits: 3,
-        hour12: false,
-        timeZone: 'GMT',
-      }).format(targetTime);
-
-      return `${dayString} ${timeString}`;
-    }
-  };
-
-  const createdDate = displayDate(media.date, media.offset);
-  const modifiedDate = displayDate(media.modified, 0);
+  const createdDate = displayMediaDate(media.date, media.offset);
+  const modifiedDate = displayMediaDate(media.modified);
   const megapixels = media.width && media.height ? ((media.width * media.height) / 1000000).toFixed(2) : undefined;
 
   return (

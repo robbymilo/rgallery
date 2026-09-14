@@ -18,6 +18,7 @@ import (
 	"github.com/robbymilo/rgallery/pkg/queries"
 	"github.com/robbymilo/rgallery/pkg/resize"
 	"github.com/robbymilo/rgallery/pkg/sizes"
+	"github.com/robbymilo/rgallery/pkg/transcode"
 	"github.com/robbymilo/rgallery/pkg/types"
 )
 
@@ -69,6 +70,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 
 		// create a cancel channel for this scan
 		resetCancelChan(make(chan struct{}))
+		transcode.For(c).LogConfiguration()
 
 		var unsupportedPaths []string
 
@@ -188,6 +190,9 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 						}
 					}
 
+				} else if item.Type == "video" {
+					// Refresh missing or outdated video files even when the source is unchanged.
+					pregenerateVideo(filepath.Join(config.MediaPath(c), item.Path), item.Hash, c)
 				}
 
 			}

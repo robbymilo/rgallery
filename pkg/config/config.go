@@ -70,6 +70,7 @@ func GetConf(cCtx cli.Context, Commit, Tag string) Conf {
 	c.PreGenerateThumb = cCtx.Bool("pregenerate-thumbs")
 	c.Quality = cCtx.Int("quality")
 	c.TranscodeResolution = cCtx.Int("transcode-resolution")
+	c.Transcode = VideoConf(cCtx)
 	c.ResizeService = cCtx.String("resize_service")
 	c.SessionLength = cCtx.Int("session-length")
 	c.TileServer = cCtx.String("tile-server")
@@ -81,4 +82,14 @@ func GetConf(cCtx cli.Context, Commit, Tag string) Conf {
 	}
 
 	return c
+}
+
+func VideoConf(cCtx cli.Context) types.TranscodeConfig {
+	return types.TranscodeConfig{
+		Profile: cCtx.String("transcode-quality"), Mode: cCtx.String("transcode-mode"),
+		Encoder: cCtx.String("transcode-encoder"), Device: cCtx.String("transcode-device"),
+		CRF: cCtx.Int("transcode-crf"), Preset: cCtx.String("transcode-preset"),
+		MaxRate: cCtx.Int("transcode-maxrate"), AudioBitrate: cCtx.Int("transcode-audio-bitrate"),
+		Workers: cCtx.Int("transcode-workers"), CacheMB: cCtx.Int("transcode-cache-mb"),
+	}
 }

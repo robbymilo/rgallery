@@ -1,4 +1,13 @@
-.drone.yml
+node_modules
+**/node_modules
+.env
+.env.*
+data
+data-*
+media
+media-*
+tmp
+go-tmp
 images/*
 images-*/
 cache/*

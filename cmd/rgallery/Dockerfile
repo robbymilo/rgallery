@@ -21,11 +21,22 @@ COPY --from=frontend /usr/app/pkg/dist ./pkg/dist
 
 RUN make build-rgallery TARGETOS=${TARGETOS} TARGETARCH=${TARGETARCH}
 
-FROM --platform=$BUILDPLATFORM alpine:3.18.5
-ARG ARCH TARGETOS TARGETARCH
+FROM debian:trixie-slim AS runtime-deps
+ARG TARGETARCH
 
-RUN apk add --no-cache exiftool ffmpeg vips-heif vips-dev vips-tools
+# Use Debian FFmpeg with AMD and Intel VA-API drivers, including older Intel GPUs.
+RUN sed -i 's/^Components: main$/Components: main non-free/' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates libimage-exiftool-perl ffmpeg libvips-tools mesa-va-drivers vainfo \
+    && if [ "$TARGETARCH" = "amd64" ]; then apt-get install -y --no-install-recommends intel-media-va-driver-non-free i965-va-driver; fi \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /media /cache /data /config \
+    && chown 1000:1000 /media /cache /data /config
+
+FROM runtime-deps AS runtime
+ARG TARGETOS TARGETARCH
+ENV MESA_SHADER_CACHE_DIR=/cache/mesa MESA_SHADER_CACHE_MAX_SIZE=64M
 COPY --from=builder /go/src/github.com/robbymilo/rgallery/bin/rgallery_${TARGETOS}-${TARGETARCH} /usr/bin/rgallery
 
 ENTRYPOINT [ "/usr/bin/rgallery" ]
-CMD ["rgallery"]
+CMD []
