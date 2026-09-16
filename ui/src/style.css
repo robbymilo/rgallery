@@ -4,6 +4,28 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+.image-zoom-animation {
+  position: fixed;
+  z-index: 110;
+  contain: strict;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.image-zoom-animation__backdrop {
+  position: absolute;
+  will-change: opacity;
+  inset: 0;
+  background: #000;
+}
+
+.image-zoom-animating > button,
+.image-zoom-animating > [data-zoom-toolbar] {
+  opacity: 0 !important;
+  transition: none !important;
+}
+
 @theme {
   --color-charcoal-50: oklch(0.98 0.0198 286.03);
   --color-charcoal-100: oklch(0.894 0.018 286.03);
