@@ -38,14 +38,7 @@ export function useZoomTransition(
           ? 1
           : 0;
       active.current?.cancel();
-      if (
-        !image?.complete ||
-        !image.naturalWidth ||
-        !viewer ||
-        !from?.width ||
-        typeof image.animate !== 'function' ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ) {
+      if (!image?.complete || !image.naturalWidth || !viewer || !from?.width || typeof image.animate !== 'function') {
         update();
         return;
       }

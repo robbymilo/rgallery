@@ -50,24 +50,29 @@ describe('Image viewer tap actions', () => {
     assert.equal(resolveImageTap({ ...touch, time: 1100 }, first.tap).action, 'none');
   });
 
-  it('leaves a single touch tap alone and zooms on a subsequent double tap', () => {
+  it('toggles zoom on a single touch tap and ignores the second tap of a double tap', () => {
     const touch = { ...click, pointerType: 'touch' };
     const first = resolveImageTap(touch, null);
-    assert.equal(first.action, 'none');
+    assert.equal(first.action, 'zoom');
     const second = resolveImageTap({ ...touch, time: 1100 }, first.tap);
-    assert.equal(second.action, 'zoom');
+    assert.equal(second.action, 'none');
     assert.equal(second.tap, null);
+    assert.equal(resolveImageTap({ ...touch, time: 1500 }, second.tap).action, 'zoom');
   });
 
-  it('requires touch double taps to be close in time and position', () => {
+  it('allows separate touch taps to toggle zoom again', () => {
     const touch = { ...click, pointerType: 'touch' };
     const first = resolveImageTap(touch, null);
-    assert.equal(resolveImageTap({ ...touch, time: 1400 }, first.tap).action, 'none');
-    assert.equal(resolveImageTap({ ...touch, time: 1100, point: { x: 400, y: 150 } }, first.tap).action, 'none');
+    assert.equal(resolveImageTap({ ...touch, time: 1400 }, first.tap).action, 'zoom');
+    assert.equal(resolveImageTap({ ...touch, time: 1100, point: { x: 400, y: 150 } }, first.tap).action, 'zoom');
   });
 
   it('does not combine different pointer types into a double tap', () => {
     const first = resolveImageTap(click, null);
-    assert.equal(resolveImageTap({ ...click, time: 1100, pointerType: 'touch' }, first.tap).action, 'none');
+    assert.equal(resolveImageTap({ ...click, time: 1100, pointerType: 'touch' }, first.tap).action, 'zoom');
+  });
+
+  it('closes from a background tap on touch', () => {
+    assert.equal(resolveImageTap({ ...click, pointerType: 'touch', isImage: false }, null).action, 'close');
   });
 });
