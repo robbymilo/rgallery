@@ -28,6 +28,7 @@ export function useImageGestures(options: Options) {
   const pendingExpansion = useRef<{ anchor: Point; point: Point; width: number } | null>(null);
   const [transform, setTransform] = useState(fitTransform);
   const current = useRef(transform);
+  const liveFrame = useRef<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [transitionEnabled, setTransitionEnabled] = useState(false);
@@ -48,19 +49,66 @@ export function useImageGestures(options: Options) {
     tap.current = null;
   }, []);
 
-  const update = useCallback((value: ZoomTransform) => {
+  const bound = useCallback((value: ZoomTransform) => {
     const image = imageRef.current;
     const viewport = viewportRef.current;
-    const bounded =
-      image && viewport
-        ? clampTransform(
-            value,
-            { width: image.clientWidth, height: image.clientHeight },
-            { width: viewport.clientWidth, height: viewport.clientHeight }
-          )
-        : fitTransform();
-    current.current = bounded;
-    setTransform(bounded);
+    return image && viewport
+      ? clampTransform(
+          value,
+          { width: image.clientWidth, height: image.clientHeight },
+          { width: viewport.clientWidth, height: viewport.clientHeight }
+        )
+      : fitTransform();
+  }, []);
+
+  const writeTransform = useCallback((value: ZoomTransform) => {
+    if (!imageRef.current) return;
+    imageRef.current.style.transform = `translate3d(${value.pan.x}px, ${value.pan.y}px, 0) scale(${value.scale})`;
+  }, []);
+
+  const update = useCallback(
+    (value: ZoomTransform) => {
+      const bounded = bound(value);
+      current.current = bounded;
+      if (liveFrame.current !== null) {
+        cancelAnimationFrame(liveFrame.current);
+        liveFrame.current = null;
+      }
+      writeTransform(bounded);
+      setTransform(bounded);
+    },
+    [bound, writeTransform]
+  );
+
+  // Pointer moves update the compositor directly and only schedule one write
+  // per frame. React state is committed when the gesture ends.
+  const updateLive = useCallback(
+    (value: ZoomTransform) => {
+      current.current = bound(value);
+      if (liveFrame.current === null) {
+        liveFrame.current = requestAnimationFrame(() => {
+          liveFrame.current = null;
+          writeTransform(current.current);
+        });
+      }
+    },
+    [bound, writeTransform]
+  );
+
+  const commitLive = useCallback(() => {
+    if (liveFrame.current !== null) {
+      cancelAnimationFrame(liveFrame.current);
+      liveFrame.current = null;
+    }
+    writeTransform(current.current);
+    setTransform(current.current);
+  }, [writeTransform]);
+
+  const cancelLive = useCallback(() => {
+    if (liveFrame.current !== null) {
+      cancelAnimationFrame(liveFrame.current);
+      liveFrame.current = null;
+    }
   }, []);
 
   const getNativeScale = useCallback(() => {
@@ -184,6 +232,7 @@ export function useImageGestures(options: Options) {
   }, [isExpanded, relativePoint, update, rebaseGesture]);
 
   useLayoutEffect(() => {
+    cancelLive();
     clearTap();
     if (slideTimer.current !== null) clearTimeout(slideTimer.current);
     slideTimer.current = null;
@@ -195,10 +244,11 @@ export function useImageGestures(options: Options) {
     setIsDragging(false);
     setTransitionEnabled(false);
     return () => {
+      cancelLive();
       clearTap();
       if (slideTimer.current !== null) clearTimeout(slideTimer.current);
     };
-  }, [options.mediaKey, clearTap, update]);
+  }, [options.mediaKey, cancelLive, clearTap, update]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -250,7 +300,7 @@ export function useImageGestures(options: Options) {
       if (!isExpanded && scale > 1.02) {
         expandZoom(point, value);
       } else if (isExpanded) {
-        update(value);
+        updateLive(value);
       }
       return;
     }
@@ -262,7 +312,7 @@ export function useImageGestures(options: Options) {
       clearTap();
     }
     if (active.transform.scale > 1) {
-      update({
+      updateLive({
         scale: active.transform.scale,
         pan: { x: active.transform.pan.x + dx, y: active.transform.pan.y + dy },
       });
@@ -287,6 +337,7 @@ export function useImageGestures(options: Options) {
       return;
     }
     gesture.current = null;
+    commitLive();
     setIsDragging(false);
     setTransitionEnabled(true);
     setDragOffset(0);
