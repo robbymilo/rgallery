@@ -18,8 +18,14 @@ export async function getAdmin(): Promise<AdminData> {
   const res = await fetch('/api/admin', { credentials: 'include' });
   if (!res.ok) {
     let msg = `API Error: ${res.status}`;
-    const data = (await res.json()) as Record<string, unknown>;
-    msg = (data['msg'] as string) || (data['error'] as string) || msg;
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+      msg = (data?.['msg'] as string) || (data?.['error'] as string) || msg;
+    } else {
+      const text = (await res.text()).trim();
+      if (text) msg = text;
+    }
     throw new Error(msg);
   }
   return (await res.json()) as AdminData;
