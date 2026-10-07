@@ -15,9 +15,15 @@ steps:
       - make lint
 
   - name: test
-    image: golang:1.25.10-alpine3.23
+    image: golang:1.25.10-trixie
+    environment:
+      CGO_ENABLED: "0"
     commands:
-      - apk add make git exiftool ffmpeg gcc g++
+      - >-
+        sed -i 's/^Components: main$/Components: main non-free/' /etc/apt/sources.list.d/debian.sources
+      - apt-get update
+      - apt-get install -y --no-install-recommends make git ca-certificates libimage-exiftool-perl ffmpeg libvips-tools mesa-va-drivers vainfo
+      - if [ "$(dpkg --print-architecture)" = "amd64" ]; then apt-get install -y --no-install-recommends intel-media-va-driver-non-free i965-va-driver; fi
       - make test
     depends_on:
       - prettier

@@ -1,8 +1,10 @@
 package rgallery
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/robbymilo/rgallery/pkg/database"
 	"github.com/robbymilo/rgallery/pkg/queries"
 	"github.com/robbymilo/rgallery/pkg/scanner"
+	"github.com/robbymilo/rgallery/pkg/transcode"
 	"github.com/robbymilo/rgallery/pkg/types"
 	"github.com/robbymilo/rgallery/pkg/users"
 	cli "github.com/urfave/cli/v2"
@@ -22,6 +25,13 @@ import (
 type Conf = types.Conf
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 type UserCredentials = types.UserCredentials
+
+func validateVideoFlags(cCtx *cli.Context) error {
+	if cCtx.Int("transcode-workers") < 1 || cCtx.Int("transcode-resolution") < 2 {
+		return fmt.Errorf("transcode-workers must be at least 1, transcode-resolution at least 2")
+	}
+	return transcode.Validate(Conf{TranscodeResolution: cCtx.Int("transcode-resolution"), Transcode: config.VideoConf(*cCtx)})
+}
 
 func SetupApp(Commit, Tag string) {
 	port := "3000"
@@ -74,13 +84,23 @@ func SetupApp(Commit, Tag string) {
 			Value: 60,
 		},
 		&cli.IntFlag{
-			Name:  "transcode-resolution",
-			Usage: "Resolution of transcoded videos. Defaults to 720p. For 1080p, set to 1920, for 4k set to 3840, for 8k set to 7680. Higher resolutions use more CPU and disk space.",
-			Value: 1280,
+			Name:    "transcode-resolution",
+			Usage:   "Maximum video long edge in pixels, without upscaling. 1280 allows 720p and 1920 allows 1080p for 16:9 sources. Individual quality profiles may use smaller dimensions.",
+			Value:   1280,
+			EnvVars: []string{"RGALLERY_TRANSCODE_RESOLUTION"},
 		},
+		&cli.StringFlag{Name: "transcode-quality", Value: "small", Usage: "Default video quality: saver, small, or high.", EnvVars: []string{"RGALLERY_TRANSCODE_QUALITY"}},
+		&cli.StringFlag{Name: "transcode-mode", Value: "ondemand", Usage: "Video generation: ondemand, pregenerate (all profiles), or hybrid (default profile during scan). Independent of thumbnail generation.", EnvVars: []string{"RGALLERY_TRANSCODE_MODE"}},
+		&cli.StringFlag{Name: "transcode-encoder", Value: "auto", Usage: "Video encoder: auto, cpu, or vaapi. Hardware failures fall back to CPU.", EnvVars: []string{"RGALLERY_TRANSCODE_ENCODER"}},
+		&cli.StringFlag{Name: "transcode-device", Usage: "VA-API render device, e.g. /dev/dri/renderD128. Empty discovers accessible devices.", EnvVars: []string{"RGALLERY_TRANSCODE_DEVICE"}},
+		&cli.IntFlag{Name: "transcode-crf", Value: -1, Usage: "CPU CRF for the default profile (0–51; higher means smaller files). -1 uses the profile default.", EnvVars: []string{"RGALLERY_TRANSCODE_CRF"}},
+		&cli.StringFlag{Name: "transcode-preset", Value: "veryfast", Usage: "CPU encoder speed preset; slower presets require more processing time.", EnvVars: []string{"RGALLERY_TRANSCODE_PRESET"}},
+		&cli.IntFlag{Name: "transcode-maxrate", Usage: "Video bitrate ceiling in kbps across all profiles. 0 uses each profile's ceiling.", EnvVars: []string{"RGALLERY_TRANSCODE_MAXRATE"}},
+		&cli.IntFlag{Name: "transcode-audio-bitrate", Usage: "Audio bitrate in kbps (32–320). 0 uses each profile's default.", EnvVars: []string{"RGALLERY_TRANSCODE_AUDIO_BITRATE"}},
+		&cli.IntFlag{Name: "transcode-workers", Value: 2, Usage: "Maximum concurrent video jobs (1–16).", EnvVars: []string{"RGALLERY_TRANSCODE_WORKERS"}},
 		&cli.BoolFlag{
 			Name:  "pregenerate-thumbs",
-			Usage: "Generate thumbnails and video transcode files during scan. Caution - may cause high server load if set to false.",
+			Usage: "Generate image thumbnails, video posters, and short video previews during scan. Full playback encoding is controlled by transcode-mode.",
 			Value: true,
 		},
 		&cli.StringFlag{
@@ -127,8 +147,10 @@ func SetupApp(Commit, Tag string) {
 		Usage:       "A photo and video application.",
 		Description: "The timeline for your photo and video library.",
 		Flags:       flags,
+		Before:      validateVideoFlags,
 		Action: func(cCtx *cli.Context) error {
 			c := config.GetConf(*cCtx, Commit, Tag)
+			transcode.For(c).LogConfiguration()
 
 			c.Logger.Info("thumbnail dir located at " + config.CachePath(c))
 			database.CreateDB(c)
@@ -179,9 +201,23 @@ func SetupApp(Commit, Tag string) {
 		},
 		Commands: []*cli.Command{
 			{
-				Name:  "scan",
-				Usage: "Scan the media directory for new, modified, or delete media items.",
-				Flags: flags,
+				Name: "video-check", Usage: "Probe video acceleration and print diagnostics without scanning or starting the server.", Flags: flags,
+				Before: validateVideoFlags,
+				Action: func(cCtx *cli.Context) error {
+					c := config.GetConf(*cCtx, Commit, Tag)
+					c.Logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
+					manager := transcode.NewManager(c)
+					defer manager.Close()
+					encoder := json.NewEncoder(os.Stdout)
+					encoder.SetIndent("", "  ")
+					return encoder.Encode(manager.Diagnostics())
+				},
+			},
+			{
+				Name:   "scan",
+				Usage:  "Scan the media directory for new, modified, or delete media items.",
+				Flags:  flags,
+				Before: validateVideoFlags,
 				Action: func(cCtx *cli.Context) error {
 					c := config.GetConf(*cCtx, Commit, Tag)
 					database.CreateDB(c)

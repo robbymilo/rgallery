@@ -14,6 +14,7 @@ type Conf struct {
 	Data                string
 	Quality             int
 	TranscodeResolution int
+	Transcode           TranscodeConfig
 	PreGenerateThumb    bool
 	ResizeService       string
 	LocationService     string
@@ -28,6 +29,19 @@ type Conf struct {
 	CustomHTML template.HTML `yaml:"custom_html"`
 	Meta       Meta
 	Memories   bool
+}
+
+// TranscodeConfig holds video settings, separate from image thumbnail quality.
+type TranscodeConfig struct {
+	Profile      string
+	Mode         string
+	Encoder      string
+	Device       string
+	CRF          int
+	Preset       string
+	MaxRate      int
+	AudioBitrate int
+	Workers      int
 }
 
 type MediaItems []Media

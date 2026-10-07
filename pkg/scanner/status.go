@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"sync"
 )
 
@@ -42,7 +43,11 @@ func CancelScan() bool {
 	// Protect write to avoid races with resetCancelChan
 	scanCancelMutex.Lock()
 	if scanCancel != nil {
-		close(scanCancel)
+		select {
+		case <-scanCancel:
+		default:
+			close(scanCancel)
+		}
 	}
 	scanCancelMutex.Unlock()
 
@@ -50,6 +55,24 @@ func CancelScan() bool {
 	SetScanInProgress(false)
 
 	return true
+}
+
+// videoScanContext connects background video work to scan cancellation.
+func videoScanContext() (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	scanCancelMutex.RLock()
+	ch := scanCancel
+	scanCancelMutex.RUnlock()
+	if ch != nil {
+		go func() {
+			select {
+			case <-ch:
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+	}
+	return ctx, cancel
 }
 
 // resetCancelChan sets the package cancel channel

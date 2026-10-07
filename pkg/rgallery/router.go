@@ -61,6 +61,8 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 	r.Route("/api/transcode", func(r chi.Router) {
 		r.Use(middleware.Auth(c))
 		r.Use(middleware.Logger(c))
+		r.With(middleware.Admin(c)).Get("/diagnostics", server.ServeVideoDiagnostics)
+		r.Get("/{hash}/{profile}/{file}", server.ServeTranscode)
 		r.Get("/{hash}/{file}", server.ServeTranscode)
 	})
 

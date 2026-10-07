@@ -6,6 +6,7 @@ import Loading from '../components/Loading';
 import Error from '../components/Error';
 import { getAdmin, AdminData, AdminApiKey } from '../services/admin';
 import { User } from '../types';
+import VideoDiagnostics from '../components/VideoDiagnostics';
 
 enum ScanDescriptions {
   Scan = 'Scan for new and modified items and remove deleted items.',
@@ -394,6 +395,8 @@ const Admin: React.FC = () => {
           </button>
         </form>
       </section>
+
+      <VideoDiagnostics />
     </div>
   );
 };

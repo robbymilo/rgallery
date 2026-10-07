@@ -6,6 +6,7 @@ import ThumbnailStrip from '../components/ThumbnailStrip';
 import ExifPanel from '../components/ExifPanel';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useFullscreen } from '../context/FullscreenContext';
+import { adjacentMedia } from '../lib/media';
 
 const MediaDetail: React.FC = () => {
   const { mediaID } = useParams<{ mediaID?: string }>();
@@ -30,18 +31,22 @@ const MediaDetail: React.FC = () => {
     const controller = new AbortController();
     setError(null);
     if (!mediaID || !/^\d+$/.test(mediaID) || Number(mediaID) <= 0 || Number(mediaID) > 0xffffffff) {
+      setData(null);
       setError('Invalid media URL.');
       setIsLoading(false);
       return;
     }
+    setData((previous) => adjacentMedia(previous, Number(mediaID)));
     setIsLoading(true);
     getMedia(Number(mediaID), filters, controller.signal)
       .then((result) => {
         if (!controller.signal.aborted) setData(result);
       })
       .catch((e) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
+          setData(null);
           setError(String(e).includes('404') ? 'Media not found.' : 'Unable to load media. Please try again.');
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
@@ -61,15 +66,6 @@ const MediaDetail: React.FC = () => {
       document.title = previousTitle;
     };
   }, [data && data.media && data.media.path]);
-
-  // Pause all video elements when media changes
-  useEffect(() => {
-    const videos = document.querySelectorAll('video');
-    videos.forEach((video) => {
-      video.pause();
-      video.currentTime = 0;
-    });
-  }, [data?.media?.hash]);
 
   const handleNext = useCallback(() => {
     if (data && !isLoading && Number(data.media.hash) === Number(mediaID) && data.next.length > 0) {
@@ -176,7 +172,7 @@ const MediaDetail: React.FC = () => {
 
           {viewMode === ViewMode.NORMAL && (
             <div className="flex w-full flex-grow flex-col items-center bg-white pb-8 dark:bg-zinc-900">
-              <ExifPanel media={data.media} />
+              {!isLoading && String(data.media.hash) === mediaID && <ExifPanel media={data.media} />}
             </div>
           )}
         </div>

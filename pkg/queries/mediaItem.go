@@ -36,6 +36,8 @@ func GetSingleMediaItem(hash uint32, c Conf) (Media, error) {
 	if err != nil {
 		return Media{}, fmt.Errorf("error preparing query for media item: %v", err)
 	}
+	// Finalize the statement before returning the connection, even on errors.
+	defer func() { _ = stmt.Finalize() }()
 
 	stmt.BindInt64(1, int64(hash))
 
@@ -87,11 +89,6 @@ func GetSingleMediaItem(hash uint32, c Conf) (Media, error) {
 	}
 
 	item.Srcset = sizes.Srcset(item.Hash, item.Width, item.Path, c)
-
-	err = stmt.Finalize()
-	if err != nil {
-		return Media{}, fmt.Errorf("error finalizing statement: %v", err)
-	}
 
 	return item, nil
 }

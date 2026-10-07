@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    plugins: [react(), tailwindcss(), svgr()],
+    plugins: [react(), tailwindcss(), svgr({ svgrOptions: { runtimeConfig: false } })],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -44,6 +44,9 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: '../pkg/dist/spa',
       rollupOptions: {
+        output: {
+          entryFileNames: (chunk) => (chunk.name === 'sw' ? 'service-worker.js' : 'assets/[name]-[hash].js'),
+        },
         input: {
           index: 'index.html',
           sw: 'src/service-worker.js',

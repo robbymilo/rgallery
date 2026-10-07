@@ -50,11 +50,11 @@ docker-run:
 docker-run-scalable:
 	docker compose -f docker-compose-scalable.yml up --scale rgallery-resize=3 --build
 
-DEV_FLAGS=--location-dataset=Countries10
+DEV_FLAGS=--location-dataset=Countries10  --transcode-resolution=1920 --transcode-quality=high
 
 # local dev
 .PHONY: run
-run:
+run: assets
 	TZ=$(TZ) go run $(FLAGS) ./cmd/rgallery/main.go -dev $(DEV_FLAGS)
 
 resize:
