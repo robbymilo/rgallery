@@ -311,7 +311,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ media, previous, next, onNext
             onClick={(e) => e.stopPropagation()}
             className="flex items-center justify-center rounded-lg border border-zinc-300 bg-zinc-200 p-2.5 text-black shadow-lg backdrop-blur-md transition-colors hover:bg-zinc-300 dark:border-white/10 dark:bg-black/50 dark:text-white dark:hover:bg-white/10"
             aria-label="Download original"
-            title="Download Original"
+            title="Download original"
           >
             <Download />
           </a>
