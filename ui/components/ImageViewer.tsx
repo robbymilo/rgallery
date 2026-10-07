@@ -199,6 +199,12 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ media, previous, next, onNext
         return;
       }
       if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) {
+        e.preventDefault();
+        if (isExpanded) closeZoom(true);
+        else openViewer(true);
+        return;
+      }
       if (e.key.toLowerCase() === 'z' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.repeat) {
         e.preventDefault();
         toggleZoom(undefined, true);
@@ -320,7 +326,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ media, previous, next, onNext
             data-zoom-control
             aria-label={isExpanded ? 'Close viewer' : 'Open fullscreen'}
             aria-expanded={isExpanded}
-            title={isExpanded ? 'Close viewer (Esc)' : 'Open fullscreen (Z)'}
+            title={isExpanded ? 'Close viewer (Esc/F), zoom (Z)' : 'Open fullscreen (F/Z)'}
           >
             {isExpanded ? <Close className="h-6 w-6" /> : <Fullscreen className="h-6 w-6" />}
           </button>
