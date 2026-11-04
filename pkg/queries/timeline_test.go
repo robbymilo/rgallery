@@ -49,6 +49,15 @@ func TestTimelineKeepsTimestampCollisionsAcrossPages(t *testing.T) {
 	}
 }
 
+func TestTimelineBucketsGroupByMonth(t *testing.T) {
+	c := mediaFixture(t)
+	result, err := queries.GetTimelineBuckets(&types.FilterParams{OrderBy: "date", Direction: "desc"}, c)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(t, "2025-01", result[0].Date)
+	assert.Equal(t, 1, result[0].Count)
+}
+
 func TestSearchTreatsOperatorsAndPunctuationLiterally(t *testing.T) {
 	c := mediaFixture(t)
 	for _, term := range []string{"NOT", "NIKON OR", "20250101-senično", `"NIKON"`, "(NIKON)"} {

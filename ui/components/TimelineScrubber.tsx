@@ -63,7 +63,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
       totalItems += m.count;
     });
 
-    timeline.sort().forEach((item) => {
+    [...timeline].sort((a, b) => a.date.localeCompare(b.date)).forEach((item) => {
       const d = new Date(item.date);
       const year = d.getFullYear();
       const month = d.getMonth();

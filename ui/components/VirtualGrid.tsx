@@ -136,6 +136,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
 
   // Refs for scroll anchoring and processing
   const prevFirstPhotoIdRef = useRef<string | null>(null);
+  const prevAnchorTopRef = useRef<number | null>(null);
   const lastProcessedTimestampRef = useRef<number | null>(null);
   const pendingScrollRetryRef = useRef<boolean>(false);
   const loadStartCountRef = useRef<number | null>(null);
@@ -173,8 +174,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   // scroll
   useLayoutEffect(() => {
     if (!containerRef.current || items.length === 0) return;
-    console.log('[VirtualGrid] Handling scroll adjustments');
-
     let didProgrammaticScroll = false;
 
     // jump to date
@@ -237,12 +236,9 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
       }
 
       if (targetNode) {
-        console.log('[VirtualGrid] Target node type:', targetNode.type, 'top:', targetNode.top);
-
         const offset = 0;
         const targetTop = Math.max(0, targetNode.top - offset);
         containerRef.current.scrollTop = targetTop;
-        console.log('[VirtualGrid] Set scrollTop to:', targetTop, 'actual scrollTop:', containerRef.current.scrollTop);
 
         if (Math.abs(containerRef.current.scrollTop - targetTop) > 2) {
           pendingScrollRetryRef.current = true;
@@ -253,6 +249,11 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
 
         if (isNewRequest) {
           lastProcessedTimestampRef.current = scrollToTarget!.timestamp;
+          // A jump can land in a previously loaded part of the library.
+          // Do not carry the old end-of-list result into the new position.
+          noMoreTimelineRef.current = false;
+          attemptedLoadRef.current = false;
+          loadStartCountRef.current = null;
           // Reset anchor logic
           const firstPhotoItem = items.find(
             (i) => i.type === NodeType.PHOTO_ROW && (i as PhotoRowNode).photos.length > 0
@@ -263,8 +264,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         didProgrammaticScroll = true;
       }
     }
-
-    console.log('[VirtualGrid] Did programmatic scroll:', didProgrammaticScroll);
 
     if (didProgrammaticScroll) return;
 
@@ -280,10 +279,12 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
           i.type === NodeType.PHOTO_ROW && (i as PhotoRowNode).photos.some((p) => p.id === prevFirstPhotoIdRef.current)
       );
 
-      if (anchorItem) {
-        // prevent jump
-        containerRef.current.scrollTop += anchorItem.top;
+      if (anchorItem && prevAnchorTopRef.current !== null) {
+        // Preserve the old anchor position by applying only the inserted height.
+        containerRef.current.scrollTop += anchorItem.top - prevAnchorTopRef.current;
       }
+      prevAnchorTopRef.current = null;
+      prevFirstPhotoIdRef.current = currentFirstId;
     }
   }, [items, scrollToTarget]);
 
@@ -303,6 +304,13 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }
 
     if (scrollTop < threshold && scrollTop > 0 && !isLoading) {
+      const firstPhotoItem = items.find(
+        (item) => item.type === NodeType.PHOTO_ROW && (item as PhotoRowNode).photos.length > 0
+      ) as PhotoRowNode | undefined;
+      if (firstPhotoItem) {
+        prevFirstPhotoIdRef.current = firstPhotoItem.photos[0].id;
+        prevAnchorTopRef.current = firstPhotoItem.top;
+      }
       onStartReached();
     }
   };

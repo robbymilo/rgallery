@@ -62,3 +62,47 @@ func ServeTimeline(w http.ResponseWriter, r *http.Request) {
 
 	cacheHandle.Set(fmt.Sprint(r.URL)+time.Now().Format("2006-01-02"), response, cache.NoExpiration)
 }
+
+func ServeTimelineBuckets(w http.ResponseWriter, r *http.Request) {
+	c := r.Context().Value(ConfigKey{}).(Conf)
+	params := r.Context().Value(ParamsKey{}).(FilterParams)
+	buckets, err := queries.GetTimelineBuckets(&params, c)
+	if err != nil {
+		c.Logger.Error("error getting timeline buckets", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := render.RenderJson(w, r, buckets); err != nil {
+		c.Logger.Error("error rendering timeline buckets", "error", err)
+	}
+}
+
+func ServeTimelineBucket(w http.ResponseWriter, r *http.Request) {
+	c := r.Context().Value(ConfigKey{}).(Conf)
+	params := r.Context().Value(ParamsKey{}).(FilterParams)
+	month := r.URL.Query().Get("month")
+	parsed, err := time.Parse("2006-01", month)
+	if err != nil {
+		http.Error(w, "month must use YYYY-MM", http.StatusBadRequest)
+		return
+	}
+	params.From = parsed.Format("2006-01-02")
+	params.To = parsed.AddDate(0, 1, 0).Add(-time.Nanosecond).Format(time.RFC3339Nano)
+	params.Cursor = 0
+	if cursor := r.URL.Query().Get("cursor"); cursor != "" {
+		if parsedCursor, parseErr := strconv.Atoi(cursor); parseErr == nil && parsedCursor >= 0 {
+			params.Cursor = parsedCursor
+		}
+	}
+	params.PageSize = 1000
+	response, err := queries.GetTimeline(&params, c)
+	if err != nil {
+		c.Logger.Error("error getting timeline bucket", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	response.Timeline = nil
+	if err := render.RenderJson(w, r, response); err != nil {
+		c.Logger.Error("error rendering timeline bucket", "error", err)
+	}
+}

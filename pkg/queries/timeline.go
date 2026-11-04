@@ -37,6 +37,11 @@ type TimelineItem struct {
 	Count int    `json:"count"`
 }
 
+type TimelineBucket struct {
+	Date  string `json:"date"` // YYYY-MM
+	Count int    `json:"count"`
+}
+
 type Photo struct {
 	Id uint32 `json:"id"`
 	W  int    `json:"w"`
@@ -110,6 +115,56 @@ func GetTimeline(params *FilterParams, c Conf) (*TimelineResponse, error) {
 	}
 
 	return response, nil
+}
+
+// GetTimelineBuckets returns lightweight month metadata for virtual timeline positioning.
+func GetTimelineBuckets(params *FilterParams, c Conf) ([]TimelineBucket, error) {
+	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
+		Flags: sqlite.OpenReadOnly,
+		PoolSize: 1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error opening sqlite db pool: %v", err)
+	}
+	defer pool.Close()
+
+	conn, err := pool.Take(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to take connection from pool: %w", err)
+	}
+	defer pool.Put(conn)
+
+	baseQuery, args, err := buildBaseQuery(params, c)
+	if err != nil {
+		return nil, err
+	}
+	query := fmt.Sprintf(`
+		SELECT substr(m.date, 1, 7) AS month, COUNT(DISTINCT m.date)
+		%s
+		GROUP BY month
+		ORDER BY month DESC`, baseQuery)
+	stmt, err := conn.Prepare(query)
+	if err != nil {
+		return nil, fmt.Errorf("prepare timeline buckets: %w", err)
+	}
+	defer stmt.Finalize()
+	bindArgs(stmt, args)
+
+	buckets := make([]TimelineBucket, 0)
+	for {
+		hasRow, err := stmt.Step()
+		if err != nil {
+			return nil, err
+		}
+		if !hasRow {
+			break
+		}
+		buckets = append(buckets, TimelineBucket{
+			Date: stmt.ColumnText(0),
+			Count: int(stmt.ColumnInt64(1)),
+		})
+	}
+	return buckets, nil
 }
 
 func fetchTotalCount(conn *sqlite.Conn, params *FilterParams, c Conf) (int, error) {
