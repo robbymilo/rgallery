@@ -15,6 +15,7 @@ interface MonthNode {
   dateStr: string;
   year: number;
   total: number;
+  isSpacer?: boolean;
 }
 
 interface YearGroup {
@@ -25,6 +26,7 @@ interface YearGroup {
 
 const TICK_HEIGHT = 8; // h-3 = 12px
 const PADDING_TOP = 40; // py-10 = 40px
+const MIN_YEAR_TICKS = 3;
 
 export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   timeline,
@@ -92,6 +94,20 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
 
     grps.forEach((g) => {
       g.months.forEach((m) => nodes.push(m));
+
+      // Keep sparse years from collapsing into a single indistinguishable
+      // tick. These spacers are part of the navigation scale, so the pointer
+      // mapping stays in sync with the rendered height.
+      for (let i = g.months.length; i < MIN_YEAR_TICKS; i += 1) {
+        const lastMonth = g.months[g.months.length - 1];
+        nodes.push({
+          monthIndex: lastMonth.monthIndex,
+          dateStr: lastMonth.dateStr,
+          year: g.year,
+          total: 0,
+          isSpacer: true,
+        });
+      }
     });
 
     return { groups: grps, flatNodes: nodes, totalItems };
@@ -318,9 +334,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
           {groups.map((group) => (
             <div key={group.year} className="relative flex w-full flex-col items-end">
               <div
-                className={`absolute right-8 pr-4 text-[10px] font-bold text-zinc-600 tabular-nums dark:text-zinc-400 ${
-                  group.months.length === 0 ? 'top-0' : 'top-1/2 -translate-y-1/2'
-                }`}
+                className="absolute top-0 right-8 pr-4 text-[10px] leading-2 font-bold text-zinc-600 tabular-nums dark:text-zinc-400"
               >
                 {group.year}
               </div>
@@ -333,6 +347,9 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
                   </div>
                 );
               })}
+              {Array.from({ length: Math.max(0, MIN_YEAR_TICKS - group.months.length) }).map((_, index) => (
+                <div key={`spacer-${index}`} className="h-2 w-12" aria-hidden="true" />
+              ))}
             </div>
           ))}
           <div className="h-64" />
