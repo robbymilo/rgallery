@@ -120,13 +120,17 @@ func GetTimeline(params *FilterParams, c Conf) (*TimelineResponse, error) {
 // GetTimelineBuckets returns lightweight month metadata for virtual timeline positioning.
 func GetTimelineBuckets(params *FilterParams, c Conf) ([]TimelineBucket, error) {
 	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
-		Flags: sqlite.OpenReadOnly,
+		Flags:    sqlite.OpenReadOnly,
 		PoolSize: 1,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error opening sqlite db pool: %v", err)
 	}
-	defer pool.Close()
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("error closing pool", "err", err)
+		}
+	}()
 
 	conn, err := pool.Take(context.Background())
 	if err != nil {
@@ -147,7 +151,11 @@ func GetTimelineBuckets(params *FilterParams, c Conf) ([]TimelineBucket, error) 
 	if err != nil {
 		return nil, fmt.Errorf("prepare timeline buckets: %w", err)
 	}
-	defer stmt.Finalize()
+	defer func() {
+		if err := stmt.Finalize(); err != nil {
+			c.Logger.Error("timeline buckets: finalize stmt error", "err", err)
+		}
+	}()
 	bindArgs(stmt, args)
 
 	buckets := make([]TimelineBucket, 0)
@@ -160,7 +168,7 @@ func GetTimelineBuckets(params *FilterParams, c Conf) ([]TimelineBucket, error) 
 			break
 		}
 		buckets = append(buckets, TimelineBucket{
-			Date: stmt.ColumnText(0),
+			Date:  stmt.ColumnText(0),
 			Count: int(stmt.ColumnInt64(1)),
 		})
 	}
