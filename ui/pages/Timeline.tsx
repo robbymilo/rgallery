@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { fetchPhotos } from '../services/timeline';
+import { fetchPhotos, fetchTimelineBucket } from '../services/timeline';
 import { Photo, TimelineResponse, ApiTimelineItem, FilterState, TimelineFilters } from '../types';
 import { VirtualGrid } from '../components/VirtualGrid';
 import { TimelineScrubber } from '../components/TimelineScrubber';
@@ -51,6 +51,10 @@ const App: React.FC = () => {
 
   const latestScrubDateRef = useRef<Date | null>(null);
   const isScrubbingLoopActiveRef = useRef(false);
+  const scrubDebounceRef = useRef<number | null>(null);
+  const scrubAbortRef = useRef<AbortController | null>(null);
+  const monthCacheRef = useRef<Map<string, TimelineResponse>>(new Map());
+  const activeBucketRef = useRef<{ month: string; nextCursor: string } | null>(null);
 
   const nextPrefetchRef = useRef<Promise<Photo[]> | null>(null);
   const prevPrefetchRef = useRef<Promise<Photo[]> | null>(null);
@@ -317,6 +321,7 @@ const App: React.FC = () => {
         setPhotos(newPhotos);
         setMinOffset(0);
         setMaxOffset(newPhotos.length);
+        activeBucketRef.current = null;
 
         // Reset to top
         if (newPhotos.length > 0) {
@@ -339,6 +344,38 @@ const App: React.FC = () => {
 
   const handleEndReached = async () => {
     if (isLoadingRef.current) return;
+    const activeBucket = activeBucketRef.current;
+    if (activeBucket) {
+      isLoadingRef.current = true;
+      setIsLoading(true);
+      try {
+        const response = await fetchTimelineBucket(
+          activeBucket.month,
+          getApiFilters(),
+          undefined,
+          activeBucket.nextCursor
+        );
+        const newPhotos = mapApiPhotos(response.photos || []);
+        if (newPhotos.length > 0) {
+          setPhotos((prev) => {
+            const map = new Map(prev.map((photo) => [photo.id, photo]));
+            newPhotos.forEach((photo) => map.set(photo.id, photo));
+            return Array.from(map.values());
+          });
+          setMaxOffset((prev) => prev + newPhotos.length);
+        }
+        activeBucketRef.current = response.meta.nextCursor
+          ? { month: activeBucket.month, nextCursor: response.meta.nextCursor }
+          : null;
+      } catch (e) {
+        console.error('Timeline bucket continuation failed:', e);
+      } finally {
+        isLoadingRef.current = false;
+        setIsLoading(false);
+      }
+      return;
+    }
+
     if (nextPrefetchRef.current) {
       console.log('[Timeline] Using prefetched next photos');
 
@@ -400,7 +437,7 @@ const App: React.FC = () => {
     }
   };
 
-  const performJump = async (date: Date, updateUrl: boolean) => {
+  const performJump = async (date: Date, updateUrl: boolean, signal?: AbortSignal) => {
     const dateStr = date.toISOString().split('T')[0];
     let index = 0;
 
@@ -417,14 +454,45 @@ const App: React.FC = () => {
       console.log(
         `[Timeline] Performing jump to date ${dateStr} at index ${index} (offset ${Math.floor(index / PAGE_SIZE) * PAGE_SIZE})`
       );
-      const cursor = Math.floor(index / PAGE_SIZE) * PAGE_SIZE;
       const apiFilters = getApiFilters();
-      const response = await fetchPhotos(cursor.toString(), apiFilters);
+      const cursor = Math.floor(index / PAGE_SIZE) * PAGE_SIZE;
+      const month = dateStr.slice(0, 7);
+      let monthStartIndex = 0;
+      for (const item of timeline) {
+        if (item.date.slice(0, 7) > month) monthStartIndex += item.count;
+      }
+
+      // Load a whole month when possible. This avoids translating a date into
+      // a fragile global OFFSET and gives the virtual grid all headers in the
+      // target period. Dense months fall back to the existing page request.
+      let response: TimelineResponse;
+      let loadedOffset = cursor;
+      if (apiFilters.orderby === 'date') {
+        const cacheKey = `${month}:${JSON.stringify(apiFilters)}`;
+        let bucketResponse = monthCacheRef.current.get(cacheKey);
+        if (!bucketResponse) {
+          bucketResponse = await fetchTimelineBucket(month, apiFilters, signal);
+          monthCacheRef.current.set(cacheKey, bucketResponse);
+        }
+        const containsTarget = bucketResponse.photos.some((photo) => photo.d === dateStr);
+        if (containsTarget || bucketResponse.meta.total < PAGE_SIZE) {
+          response = bucketResponse;
+          loadedOffset = monthStartIndex;
+        } else {
+          response = await fetchPhotos(cursor.toString(), apiFilters, signal);
+        }
+      } else {
+        response = await fetchPhotos(cursor.toString(), apiFilters, signal);
+      }
       const newPhotos = mapApiPhotos(response.photos);
 
       setPhotos(newPhotos);
-      setMinOffset(cursor);
-      setMaxOffset(cursor + newPhotos.length);
+      setMinOffset(loadedOffset);
+      setMaxOffset(loadedOffset + newPhotos.length);
+      activeBucketRef.current =
+        loadedOffset === monthStartIndex && response.meta.nextCursor
+          ? { month, nextCursor: response.meta.nextCursor }
+          : null;
 
       nextPrefetchRef.current = null;
       prevPrefetchRef.current = null;
@@ -459,9 +527,15 @@ const App: React.FC = () => {
       while (latestScrubDateRef.current) {
         const target = latestScrubDateRef.current;
         latestScrubDateRef.current = null;
-        await performJump(target, updateUrl);
+        scrubAbortRef.current?.abort();
+        const controller = new AbortController();
+        scrubAbortRef.current = controller;
+        await performJump(target, updateUrl, controller.signal);
+        if (scrubAbortRef.current === controller) scrubAbortRef.current = null;
       }
     } finally {
+      scrubAbortRef.current?.abort();
+      scrubAbortRef.current = null;
       isScrubbingLoopActiveRef.current = false;
       isLoadingRef.current = false;
       setIsLoading(false);
@@ -470,14 +544,36 @@ const App: React.FC = () => {
 
   const handleScrub = useCallback(
     (date: Date) => {
-      jumpToDate(date, false);
+      // Keep the thumb responsive locally, but wait briefly before replacing
+      // the loaded page. This prevents slow connections from queueing one
+      // request for every pointer movement.
+      setVisibleDate(date);
+      scrubAbortRef.current?.abort();
+      if (scrubDebounceRef.current !== null) {
+        window.clearTimeout(scrubDebounceRef.current);
+      }
+      scrubDebounceRef.current = window.setTimeout(() => {
+        scrubDebounceRef.current = null;
+        void jumpToDate(date, false);
+      }, 16);
     },
     [timeline, mapApiPhotos, getApiFilters]
   );
 
   const handleDateSelect = (date: Date) => {
-    jumpToDate(date, false);
+    if (scrubDebounceRef.current !== null) {
+      window.clearTimeout(scrubDebounceRef.current);
+      scrubDebounceRef.current = null;
+    }
+    void jumpToDate(date, false);
   };
+
+  useEffect(() => {
+    return () => {
+      if (scrubDebounceRef.current !== null) window.clearTimeout(scrubDebounceRef.current);
+      scrubAbortRef.current?.abort();
+    };
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     if (isLoadingRef.current) return;
@@ -493,6 +589,7 @@ const App: React.FC = () => {
       setPhotos(newPhotos);
       setMinOffset(0);
       setMaxOffset(newPhotos.length);
+      activeBucketRef.current = null;
       if (newPhotos.length > 0) {
         setScrollToRequest({ date: newPhotos[0].date, timestamp: Date.now() });
         setVisibleDate(newPhotos[0].date);
@@ -573,6 +670,7 @@ const App: React.FC = () => {
             isLoading={isLoading}
             scrollToTarget={scrollToRequest}
             hasMoreItems={hasMoreItems}
+            hasPreviousItems={minOffset > 0}
             filters={convertFiltersToQueryParams(getApiFilters())}
           />
         </div>

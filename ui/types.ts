@@ -92,6 +92,11 @@ export interface ApiTimelineItem {
   count: number;
 }
 
+export interface TimelineBucket {
+	date: string; // "YYYY-MM"
+	count: number;
+}
+
 export interface TimelineResponse {
   meta: {
     total: number;

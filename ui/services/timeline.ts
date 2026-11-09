@@ -1,8 +1,9 @@
-import { TimelineResponse, TimelineFilters } from '../types';
+import { TimelineResponse, TimelineFilters, TimelineBucket } from '../types';
 
 export const fetchPhotos = async (
   cursorOffsetStr: string | null,
-  filters?: TimelineFilters
+  filters?: TimelineFilters,
+  signal?: AbortSignal
 ): Promise<TimelineResponse> => {
   const url = new URL('/api/timeline', window.location.origin);
 
@@ -28,7 +29,7 @@ export const fetchPhotos = async (
     if (filters.focallength35) url.searchParams.set('focallength35', filters.focallength35.toString());
   }
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { signal });
 
   if (!res.ok) {
     throw new Error(`API Error: ${res.status} ${res.statusText}`);
@@ -37,4 +38,35 @@ export const fetchPhotos = async (
   const data: TimelineResponse = await res.json();
 
   return data;
+};
+
+export const fetchTimelineBuckets = async (filters?: TimelineFilters): Promise<TimelineBucket[]> => {
+  const url = new URL('/api/timeline/buckets', window.location.origin);
+  if (filters) {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) url.searchParams.set(key, value.toString());
+    });
+  }
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`API Error: ${res.status} ${res.statusText}`);
+  return res.json();
+};
+
+export const fetchTimelineBucket = async (
+  month: string,
+  filters?: TimelineFilters,
+  signal?: AbortSignal,
+  cursor?: string
+): Promise<TimelineResponse> => {
+  const url = new URL('/api/timeline/bucket', window.location.origin);
+  url.searchParams.set('month', month);
+  if (cursor) url.searchParams.set('cursor', cursor);
+  if (filters) {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) url.searchParams.set(key, value.toString());
+    });
+  }
+  const res = await fetch(url.toString(), { signal });
+  if (!res.ok) throw new Error(`API Error: ${res.status} ${res.statusText}`);
+  return res.json();
 };

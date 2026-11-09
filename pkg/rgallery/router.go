@@ -121,6 +121,8 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 		r.Get("/404", server.Send404)
 
 		r.Get("/timeline", server.ServeTimeline)
+		r.Get("/timeline/buckets", server.ServeTimelineBuckets)
+		r.Get("/timeline/bucket", server.ServeTimelineBucket)
 		r.Get("/memories", server.ServeMemories)
 
 		r.Get("/media/{hash}", server.ServeMedia)
