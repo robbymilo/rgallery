@@ -10,6 +10,17 @@ import (
 	"zombiezen.com/go/sqlite/sqlitex"
 )
 
+type ScanError struct {
+	Path     string    `json:"path"`
+	Modified time.Time `json:"modified"`
+	Error    string    `json:"error"`
+}
+
+type ScanErrorsPage struct {
+	Items []ScanError `json:"items"`
+	Total int         `json:"total"`
+}
+
 // TrackScanError records a file scanning error in the database
 // This allows for later reporting and retry mechanisms
 func TrackScanError(path string, lastScanTime time.Time, error error, c Conf) error {
@@ -52,6 +63,113 @@ func TrackScanError(path string, lastScanTime time.Time, error error, c Conf) er
 	}
 
 	return nil
+}
+
+// ClearScanError removes the retry marker after the file has been ingested
+// successfully. A retry must not continue to be suppressed by an old error.
+func ClearScanError(path string, c Conf) error {
+	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
+		Flags:    sqlite.OpenReadWrite,
+		PoolSize: 1,
+	})
+	if err != nil {
+		return fmt.Errorf("error opening sqlite db pool: %v", err)
+	}
+	defer func() {
+		if err := pool.Close(); err != nil {
+			c.Logger.Error("error closing pool", "err", err)
+		}
+	}()
+
+	conn, err := pool.Take(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to take connection from pool: %w", err)
+	}
+	defer pool.Put(conn)
+
+	stmt, err := conn.Prepare("DELETE FROM scan_errors WHERE path = ?")
+	if err != nil {
+		return fmt.Errorf("error preparing scan error delete: %v", err)
+	}
+	defer func() {
+		if err := stmt.Finalize(); err != nil {
+			c.Logger.Error("error finalizing statement", "error", err)
+		}
+	}()
+	stmt.BindText(1, path)
+	if _, err := stmt.Step(); err != nil {
+		return fmt.Errorf("error deleting scan error record: %v", err)
+	}
+	return nil
+}
+
+// ResetScanError removes one failed path so the next scan will try it again.
+func ResetScanError(path string, c Conf) error {
+	if path == "" {
+		return fmt.Errorf("scan error path cannot be empty")
+	}
+	return ClearScanError(path, c)
+}
+
+// ResetAllScanErrors removes all failed paths so the next scan will retry them.
+func ResetAllScanErrors(c Conf) error {
+	conn, err := sqlite.OpenConn(database.NewSqlConnectionString(c), sqlite.OpenReadWrite)
+	if err != nil {
+		return fmt.Errorf("error opening sqlite db: %w", err)
+	}
+	defer func() {
+		if closeErr := conn.Close(); closeErr != nil {
+			c.Logger.Error("error closing sqlite connection", "err", closeErr)
+		}
+	}()
+	return sqlitex.Execute(conn, "DELETE FROM scan_errors", nil)
+}
+
+// GetScanErrorsPage returns scan errors in stable path order.
+func GetScanErrorsPage(c Conf, page, pageSize int) (ScanErrorsPage, error) {
+	if page < 1 || pageSize < 1 {
+		return ScanErrorsPage{}, fmt.Errorf("page and page size must be positive")
+	}
+	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
+		Flags: sqlite.OpenReadOnly, PoolSize: 1,
+	})
+	if err != nil {
+		return ScanErrorsPage{}, fmt.Errorf("error opening sqlite db pool: %w", err)
+	}
+	defer func() {
+		if closeErr := pool.Close(); closeErr != nil {
+			c.Logger.Error("error closing pool", "err", closeErr)
+		}
+	}()
+	conn, err := pool.Take(context.Background())
+	if err != nil {
+		return ScanErrorsPage{}, fmt.Errorf("failed to take connection from pool: %w", err)
+	}
+	defer pool.Put(conn)
+
+	result := ScanErrorsPage{Items: []ScanError{}}
+	if err := sqlitex.Execute(conn, "SELECT COUNT(*) FROM scan_errors", &sqlitex.ExecOptions{
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			result.Total = stmt.ColumnInt(0)
+			return nil
+		},
+	}); err != nil {
+		return ScanErrorsPage{}, err
+	}
+	if err := sqlitex.Execute(conn, "SELECT path, modified, error FROM scan_errors ORDER BY path ASC LIMIT ? OFFSET ?", &sqlitex.ExecOptions{
+		Args: []interface{}{pageSize, (page - 1) * pageSize},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			modified, parseErr := time.Parse(time.RFC3339, stmt.ColumnText(1))
+			if parseErr != nil {
+				return fmt.Errorf("error parsing scan error time for %q: %w", stmt.ColumnText(0), parseErr)
+			}
+			result.Items = append(result.Items, ScanError{Path: stmt.ColumnText(0), Modified: modified, Error: stmt.ColumnText(2)})
+			return nil
+		},
+	}); err != nil {
+		return ScanErrorsPage{}, err
+	}
+	return result, nil
 }
 
 // GetScanErrors retrieves all scan errors from the database

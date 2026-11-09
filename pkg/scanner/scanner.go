@@ -34,50 +34,43 @@ func BackgroundScan(scanType string, c Conf, cache *cache.Cache) {
 }
 
 // Scan coordinates the addition, updating, and removal of all media items.
-func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
-	// Defer a panic recovery function
-	defer func() {
-		if r := recover(); r != nil {
-			c.Logger.Error("recovered from panic in scanner", "panic", r)
-			if err := queries.Notify(c, "Scan encountered an error but will continue.", "scanning"); err != nil {
-				c.Logger.Error("failed to notify", "err", err)
-			}
-			// Ensure scan lock is released even after panic
-			SetScanInProgress(false)
-
-		}
-	}()
+func Scan(scanType string, c Conf, cache *cache.Cache) (status string, returnErr error) {
 
 	start := time.Now()
 	total := 0
-	var status string
 
 	// Check if a scan is already in progress using our global variable
-	if IsScanInProgress() {
+	if scanType == "thumb" {
+		return "", nil
+	}
+	ctx, claimed := beginScan()
+	if !claimed {
 		c.Logger.Info("scan already in progress")
 		if err := queries.Notify(c, "Scan already in progress.", "scanning"); err != nil {
 			c.Logger.Error("failed to notify", "err", err)
 		}
 
 		return "scan already in progress", nil
-	} else {
-		if scanType == "thumb" {
-			return "", nil
+	}
+	defer func() {
+		endScan()
+		resize.SetExternalProcessObserver(nil)
+		if r := recover(); r != nil {
+			c.Logger.Error("recovered from panic in scanner", "panic", r)
+			status = "scan failed"
+			returnErr = fmt.Errorf("scanner panic: %v", r)
 		}
-		// Set scan in progress to true
-		SetScanInProgress(true)
+	}()
+	{
 		metrics := newScanMetrics(scanType)
 		resize.SetExternalProcessObserver(metrics.ExternalProcess)
 		defer func() {
-			resize.SetExternalProcessObserver(nil)
 			metrics.finish()
 			setLastScanMetrics(metrics.snapshot())
 		}()
 
-		// create a cancel channel for this scan
-		resetCancelChan(make(chan struct{}))
-
 		var unsupportedPaths []string
+		progress := newProgressNotifier(c)
 
 		c.Logger.Info("scanning media at " + config.MediaPath(c))
 		if err := queries.Notify(c, "Scan started at "+config.MediaPath(c)+".", "scanning"); err != nil {
@@ -137,6 +130,24 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		scanErrors, err := GetScanErrors(c)
 		if err != nil {
 			c.Logger.Error("error getting scan errors", "error", err)
+			scanErrors = make(map[string]time.Time)
+		}
+		recordScanError := func(path string, scanErr error) {
+			scanTime := time.Now()
+			scanErrors[path] = scanTime
+			if err := TrackScanError(path, scanTime, scanErr, c); err != nil {
+				c.Logger.Error("error tracking scan error", "error", err)
+			}
+		}
+		clearScanError := func(path string) {
+			if _, ok := scanErrors[path]; !ok {
+				return
+			}
+			if err := ClearScanError(path, c); err != nil {
+				c.Logger.Error("error clearing scan error", "error", err)
+				return
+			}
+			delete(scanErrors, path)
 		}
 		itemsByPath := make(map[string]Media, len(items))
 		for _, item := range items {
@@ -152,9 +163,6 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 				if err := queries.Notify(c, "Scan canceled while checking for modified and deleted items.", "canceled"); err != nil {
 					c.Logger.Error("Notify error", "err", err)
 				}
-				SetScanInProgress(false)
-				// reset cancel channel
-				resetCancelChan(nil)
 				return "scan canceled", nil
 			}
 
@@ -174,9 +182,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 				}
 
 				c.Logger.Info("removed item " + item.Path)
-				if err := queries.Notify(c, "Removed item: "+item.Path, "scanning"); err != nil {
-					c.Logger.Error("Notify error", "err", err)
-				}
+				progress.Notify("Removed item: "+item.Path, "scanning")
 
 			} else if statErr != nil {
 				c.Logger.Error("error stating existing media", "path", item.Path, "kind", classifyStatError(statErr), "error", statErr)
@@ -186,13 +192,15 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 				// recreate thumbnails
 				if mediaModified(item, file, c) {
 
-					err = updateMediaItem(item.Path, true, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
+					err = updateMediaItem(ctx, item.Path, true, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
 					if err != nil {
 						c.Logger.Error("error updating media item", "error", err)
-					} else {
-						if err := queries.Notify(c, "Updated media: "+item.Path, "scanning"); err != nil {
-							c.Logger.Error("Notify error", "err", err)
+						if !isCanceled() {
+							recordScanError(item.Path, err)
 						}
+					} else {
+						clearScanError(item.Path)
+						progress.Notify("Updated media: "+item.Path, "scanning")
 					}
 
 				} else if scanType == "deep" {
@@ -200,13 +208,15 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					// remove and add all items
 					// recreate thumbnails
 					c.Logger.Info("deepScanning: " + item.Path)
-					err = updateMediaItem(item.Path, true, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
+					err = updateMediaItem(ctx, item.Path, true, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
 					if err != nil {
 						c.Logger.Error("error updating media item during deep scan", "error", err)
-					} else {
-						if err := queries.Notify(c, "Updated media: "+item.Path, "scanning"); err != nil {
-							c.Logger.Error("Notify error", "err", err)
+						if !isCanceled() {
+							recordScanError(item.Path, err)
 						}
+					} else {
+						clearScanError(item.Path)
+						progress.Notify("Updated media: "+item.Path, "scanning")
 					}
 
 				} else if scanType == "metadata" {
@@ -214,13 +224,15 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					// remove and add all items
 					// do not recreate thumbnails
 					c.Logger.Info("metadataScanning: " + item.Path)
-					err = updateMediaItem(item.Path, false, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
+					err = updateMediaItem(ctx, item.Path, false, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
 					if err != nil {
 						c.Logger.Error("error updating media item during metadata scan", "error", err)
-					} else {
-						if err := queries.Notify(c, "Updated media: "+item.Path, "scanning"); err != nil {
-							c.Logger.Error("Notify error", "err", err)
+						if !isCanceled() {
+							recordScanError(item.Path, err)
 						}
+					} else {
+						clearScanError(item.Path)
+						progress.Notify("Updated media: "+item.Path, "scanning")
 					}
 
 				}
@@ -232,22 +244,29 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		c.Logger.Info("checking for new items...")
 
 		discoveryStarted := time.Now()
-		err = filepath.WalkDir(config.MediaPath(c), func(p string, info fs.DirEntry, err error) error {
+		err = filepath.WalkDir(config.MediaPath(c), func(p string, info fs.DirEntry, walkErr error) (callbackErr error) {
 			// Add panic recovery for each file processing
 			defer func() {
 				if r := recover(); r != nil {
 					c.Logger.Error("recovered from panic while processing file", "file", p, "panic", r)
-					// Continue with next file instead of aborting the whole scan
-					err = nil
+					if relativePath, pathErr := filepath.Rel(config.MediaPath(c), p); pathErr == nil && relativePath != "." {
+						recordScanError(filepath.ToSlash(relativePath), fmt.Errorf("panic while processing file: %v", r))
+					}
+					// Continue with next file instead of aborting the whole scan.
+					callbackErr = nil
 				}
 			}()
 
-			if err != nil {
-				c.Logger.Error("error walking media directory", "path", p, "kind", classifyStatError(err), "error", err)
-				// A failed directory entry is not evidence that a media item was
-				// deleted. Skip it and let WalkDir continue where possible.
+			if walkErr != nil {
+				c.Logger.Error("error walking media directory", "path", p, "kind", classifyStatError(walkErr), "error", walkErr)
+				if p == config.MediaPath(c) {
+					return fmt.Errorf("error walking media directory %v", walkErr)
+				}
 				return nil
 
+			}
+			if info == nil {
+				return nil
 			}
 			if !info.IsDir() {
 				metrics.mu.Lock()
@@ -291,27 +310,27 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 
 					// check if file is an image
 					if isImage(p) {
-						err = addImage(relative_path, absolute_path, fileSignature, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
+						err = addImage(ctx, relative_path, absolute_path, fileSignature, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
 						if err != nil {
 							c.Logger.Error("error adding image "+absolute_path, "error", err)
-							err := TrackScanError(relative_path, time.Now(), err, c)
-							if err != nil {
-								c.Logger.Error("error tracking scan error", "error", err)
+							if !isCanceled() {
+								recordScanError(relative_path, err)
 							}
 						} else {
-							if err := queries.Notify(c, "Added image: "+relative_path, "scanning"); err != nil {
-								c.Logger.Error("Notify error", "err", err)
-							}
+							clearScanError(relative_path)
+							progress.Notify("Added image: "+relative_path, "scanning")
 						}
 
 					} else if isVideo(p) {
-						err = addVideo(relative_path, absolute_path, fileSignature, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
+						err = addVideo(ctx, relative_path, absolute_path, fileSignature, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
 						if err != nil {
 							c.Logger.Error("error adding video "+absolute_path, "error", err)
-						} else {
-							if err := queries.Notify(c, "Added video: "+relative_path, "scanning"); err != nil {
-								c.Logger.Error("Notify error", "err", err)
+							if !isCanceled() {
+								recordScanError(relative_path, err)
 							}
+						} else {
+							clearScanError(relative_path)
+							progress.Notify("Added video: "+relative_path, "scanning")
 						}
 
 					} else {
@@ -331,8 +350,6 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 
 		if err != nil {
 			if err.Error() == "scan canceled" {
-				SetScanInProgress(false)
-				resetCancelChan(nil)
 				if err := queries.Notify(c, "Scan canceled while checking for new items.", "canceled"); err != nil {
 					c.Logger.Error("Notify error", "err", err)
 				}
@@ -348,11 +365,6 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		if err != nil {
 			c.Logger.Error("error getting total media items", "error", err)
 		}
-
-		// Reset our global scan in progress flag
-		SetScanInProgress(false)
-		// cleanup cancel channel
-		resetCancelChan(nil)
 
 		unsupportedStatus := ""
 		if len(unsupportedPaths) > 0 {
@@ -395,10 +407,12 @@ func ThumbScan(c Conf) (string, error) {
 		status = "thumbscan already in progress"
 	} else {
 		start := time.Now()
-		SetScanInProgress(true)
-
-		// create a cancel channel for this scan
-		resetCancelChan(make(chan struct{}))
+		if _, claimed := beginScan(); !claimed {
+			c.Logger.Info("thumbscan already in progress")
+			return "thumbscan already in progress", nil
+		}
+		defer endScan()
+		progress := newProgressNotifier(c)
 
 		c.Logger.Info("scanning thumbs at " + config.CachePath(c))
 		// Notify clients immediately that a thumbscan has started
@@ -422,8 +436,6 @@ func ThumbScan(c Conf) (string, error) {
 				if err := queries.Notify(c, "Thumbscan canceled.", "canceled"); err != nil {
 					c.Logger.Error("Notify error", "err", err)
 				}
-				SetScanInProgress(false)
-				resetCancelChan(nil)
 				return "thumbscan canceled", nil
 			}
 
@@ -465,20 +477,15 @@ func ThumbScan(c Conf) (string, error) {
 
 		var totalErrors int
 		for idx, missing := range missingItems {
-			// periodically notify progress so clients receive updates
-			if idx%10 == 0 {
-				if err := queries.Notify(c, fmt.Sprintf("Generating thumbnails: %d/%d", idx, len(missingItems)), "scanning"); err != nil {
-					c.Logger.Warn("Notify error", "err", err)
-				}
-			}
+			// Rate-limit progress updates so notification work does not dominate
+			// large thumbnail scans.
+			progress.Notify(fmt.Sprintf("Generating thumbnails: %d/%d", idx, len(missingItems)), "scanning")
 			// check for cancellation
 			if isCanceled() {
 				c.Logger.Info("thumbscan canceled by user")
 				if err := queries.Notify(c, "Thumbscan canceled.", "canceled"); err != nil {
 					c.Logger.Warn("Notify error", "err", err)
 				}
-				SetScanInProgress(false)
-				resetCancelChan(nil)
 				return "thumbscan canceled", nil
 			}
 
@@ -500,6 +507,13 @@ func ThumbScan(c Conf) (string, error) {
 					totalErrors++
 				}
 			}
+			if isCanceled() {
+				c.Logger.Info("thumbscan canceled by user")
+				if err := queries.Notify(c, "Thumbscan canceled.", "canceled"); err != nil {
+					c.Logger.Warn("Notify error", "err", err)
+				}
+				return "thumbscan canceled", nil
+			}
 		}
 
 		status = fmt.Sprintf("Scan complete. %d thumbnails checked in %s. %d missing. %d errors occurred.", totalItems, time.Since(start).Truncate(time.Second).String(), len(missingItems), totalErrors)
@@ -508,10 +522,6 @@ func ThumbScan(c Conf) (string, error) {
 		if err := queries.Notify(c, status, "complete"); err != nil {
 			c.Logger.Error("Notify error", "err", err)
 		}
-
-		SetScanInProgress(false)
-		// cleanup cancel channel
-		resetCancelChan(nil)
 
 	}
 

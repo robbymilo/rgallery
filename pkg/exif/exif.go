@@ -1,6 +1,7 @@
 package exif
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"math"
@@ -84,11 +85,33 @@ func getLens(absolute_path string, et *exiftool.Exiftool, metrics Metrics) (stri
 
 // GetImageExif returns the exif data of a media item.
 func GetImageExif(mediatype, relative_path, absolute_path string, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, metrics Metrics) (Media, imaging, error) {
+	return getImageExifContext(context.Background(), mediatype, relative_path, absolute_path, et, convertedEt, h, c, metrics)
+}
+
+// GetImageExifContext is the cancellation-aware metadata path used by scans.
+// ExifTool's wrapper is synchronous, so cancellation is checked around its
+// blocking request and at subsequent processing boundaries.
+func GetImageExifContext(ctx context.Context, mediatype, relative_path, absolute_path string, et *exiftool.Exiftool, h *geo.Handlers, c Conf, metrics Metrics) (Media, imaging, error) {
+	return getImageExifContext(ctx, mediatype, relative_path, absolute_path, et, nil, h, c, metrics)
+}
+
+// GetImageExifWithConvertedContext is the scan path that reuses a converted ExifTool instance for lens metadata.
+func GetImageExifWithConvertedContext(ctx context.Context, mediatype, relative_path, absolute_path string, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, metrics Metrics) (Media, imaging, error) {
+	return getImageExifContext(ctx, mediatype, relative_path, absolute_path, et, convertedEt, h, c, metrics)
+}
+
+func getImageExifContext(ctx context.Context, mediatype, relative_path, absolute_path string, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, metrics Metrics) (Media, imaging, error) {
+	if err := ctx.Err(); err != nil {
+		return Media{}, nil, err
+	}
 	// relative_path is everything after the media dir
 	hash := hash.GetHash(relative_path)
 
 	started := time.Now()
 	exif := et.ExtractMetadata(absolute_path)
+	if err := ctx.Err(); err != nil {
+		return Media{}, nil, err
+	}
 	if metrics != nil {
 		metrics.Metadata(time.Since(started))
 	}
@@ -111,6 +134,9 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et, convertedE
 		started = time.Now()
 		img, err = resize.DecodeImage(absolute_path)
 		if err != nil {
+			return Media{}, nil, err
+		}
+		if err := ctx.Err(); err != nil {
 			return Media{}, nil, err
 		}
 
@@ -359,13 +385,13 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et, convertedE
 			var loc rgeo.Location
 			started = time.Now()
 			if c.LocationService == "" {
-				loc, err = geo.GetLocation(h, longitude, latitude, c)
+				loc, err = geo.GetLocationContext(ctx, h, longitude, latitude, c)
 				if err != nil {
 					return Media{}, nil, fmt.Errorf("error getting location: %v", err)
 
 				}
 			} else {
-				loc, err = geo.ReverseGeocode(longitude, latitude, c)
+				loc, err = geo.ReverseGeocodeContext(ctx, longitude, latitude, c)
 				if err != nil {
 					return Media{}, nil, fmt.Errorf("error getting location from location service: %v", err)
 				}
