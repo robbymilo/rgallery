@@ -28,11 +28,14 @@ import (
 type Subject = types.Subject
 
 // addImage gathers the exif data of an image and passes it to the db inserter.
-func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
+func addImage(relative_path, absolute_path string, signature fileSignature, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
 
 	image, _, err := exif.GetImageExif("image", relative_path, absolute_path, et, convertedEt, h, c, metrics)
 	if err != nil {
 		return fmt.Errorf("error getting exif: %v", err)
+	}
+	if err := ensureFileStable(absolute_path, signature); err != nil {
+		return err
 	}
 
 	started := time.Now()
@@ -82,11 +85,14 @@ func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 }
 
 // addVideo gathers the exif data of an image and passes it to the db inserter.
-func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
+func addVideo(relative_path, absolute_path string, signature fileSignature, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
 
 	media, _, err := exif.GetImageExif("video", relative_path, absolute_path, et, convertedEt, h, c, metrics)
 	if err != nil {
 		return fmt.Errorf("error getting video exif: %v", err)
+	}
+	if err := ensureFileStable(absolute_path, signature); err != nil {
+		return err
 	}
 
 	started := time.Now()
@@ -326,7 +332,7 @@ func insertMediaItem(media Media, c Conf, metrics *scanMetrics) error {
 				media.Ratio,
 				media.Padding,
 				string(media.Date.Format("2006-01-02T15:04:05.000Z")),
-				string(media.Modified.Format("2006-01-02T15:04:05.000Z")),
+				string(media.Modified.UTC().Format(time.RFC3339Nano)),
 				media.Folder,
 				media.Rating,
 				media.ShutterSpeed,

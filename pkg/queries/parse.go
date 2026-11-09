@@ -66,7 +66,7 @@ func parseMediaRows(stmt *sqlite.Stmt, c Conf) ([]Media, error) {
 		media.Date = date
 
 		modifiedStr := stmt.ColumnText(8)
-		modified, err := time.Parse("2006-01-02T15:04:05Z", modifiedStr)
+		modified, err := time.Parse(time.RFC3339Nano, modifiedStr)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing modified column: %v", err)
 		}
@@ -88,7 +88,7 @@ func parseMediaRow(r DatabaseMedia) (Media, error) {
 		return Media{}, fmt.Errorf("error parsing date for media item: %v", err)
 	}
 
-	m, err := time.Parse("2006-01-02T15:04:05Z", r.Modified)
+	m, err := time.Parse(time.RFC3339Nano, r.Modified)
 	if err != nil {
 		return Media{}, fmt.Errorf("error parsing modified date for media item: %v", err)
 	}
