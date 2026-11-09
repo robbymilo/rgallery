@@ -130,12 +130,14 @@ func TestScanCharacterization(t *testing.T) {
 	require.Positive(t, metrics.DatabaseTransactions)
 	require.Positive(t, metrics.CacheWrites)
 	require.Positive(t, metrics.ExternalProcessLaunches)
+	require.Equal(t, 2, metrics.ExternalProcessLaunches, "one raw and one converted ExifTool instance per scan")
 	require.Positive(t, metrics.PeakMemoryBytes)
 	first := makeScanSnapshot(t, c, firstStatus)
 
 	secondStatus, err := scanner.Scan("default", c, ca)
 	require.NoError(t, err)
 	require.Contains(t, secondStatus, "Scan complete")
+	require.Equal(t, 2, scanner.LastScanMetrics().ExternalProcessLaunches, "scan-owned ExifTool instances should be reused even when no files need metadata")
 	second := makeScanSnapshot(t, c, secondStatus)
 	second.Status = first.Status
 	require.Equal(t, first, second, "an unchanged second scan must be idempotent")

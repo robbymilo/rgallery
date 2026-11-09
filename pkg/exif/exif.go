@@ -38,25 +38,29 @@ type Metrics interface {
 	ExternalProcess()
 }
 
-// GetLens starts a new exiftool instance to retrieve the lens name. A new instance is needed as we pass "NoPrintConversion" to the other exiftool instance, which returns lens names such as "B0 00 50 50 14 14 B2 06" or "50 50 1.8 1.8 6" instead of the desired "AF-S Nikkor 50mm f/1.8G".
+// GetLens retrieves the converted lens name using a short-lived ExifTool
+// instance. Scans use getLens with their reused converted instance instead.
 func GetLens(absolute_path string) (string, error) {
-	return getLens(absolute_path, nil)
+	return getLens(absolute_path, nil, nil)
 }
 
-func getLens(absolute_path string, metrics Metrics) (string, error) {
-	buf := make([]byte, 1024*1024)
-	if metrics != nil {
-		metrics.ExternalProcess()
-	}
-	et, err := exiftool.NewExiftool(exiftool.Buffer(buf, 256*1024))
-	if err != nil {
-		return "", fmt.Errorf("error starting exiftool: %v", err)
-	}
-	defer func() {
-		if err := et.Close(); err != nil {
-			fmt.Printf("error closing exiftool: %v\n", err)
+func getLens(absolute_path string, et *exiftool.Exiftool, metrics Metrics) (string, error) {
+	if et == nil {
+		buf := make([]byte, 1024*1024)
+		if metrics != nil {
+			metrics.ExternalProcess()
 		}
-	}()
+		var err error
+		et, err = exiftool.NewExiftool(exiftool.Buffer(buf, 256*1024))
+		if err != nil {
+			return "", fmt.Errorf("error starting exiftool: %v", err)
+		}
+		defer func() {
+			if err := et.Close(); err != nil {
+				fmt.Printf("error closing exiftool: %v\n", err)
+			}
+		}()
+	}
 
 	started := time.Now()
 	exif := et.ExtractMetadata(absolute_path)
@@ -79,7 +83,7 @@ func getLens(absolute_path string, metrics Metrics) (string, error) {
 }
 
 // GetImageExif returns the exif data of a media item.
-func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.Exiftool, h *geo.Handlers, c Conf, metrics Metrics) (Media, imaging, error) {
+func GetImageExif(mediatype, relative_path, absolute_path string, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, metrics Metrics) (Media, imaging, error) {
 	// relative_path is everything after the media dir
 	hash := hash.GetHash(relative_path)
 
@@ -299,7 +303,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 			}
 		}
 
-		lens, err := getLens(absolute_path, metrics)
+		lens, err := getLens(absolute_path, convertedEt, metrics)
 		if err != nil {
 			return Media{}, nil, fmt.Errorf("error getting lens exif: %v", err)
 		}
