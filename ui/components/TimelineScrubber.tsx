@@ -27,6 +27,7 @@ interface YearGroup {
 const TICK_HEIGHT = 8; // h-3 = 12px
 const PADDING_TOP = 40; // py-10 = 40px
 const MIN_YEAR_TICKS = 3;
+const DRAG_THRESHOLD = 4;
 
 export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   timeline,
@@ -45,6 +46,9 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   const scrollSpeedRef = useRef(0);
   const animationFrameRef = useRef<number | null>(null);
   const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const didDragRef = useRef(false);
+  const grabOffsetRef = useRef(0);
 
   // Track if we have done the initial scroll positioning
   const hasInitialScrolledRef = useRef(false);
@@ -65,7 +69,8 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
       totalItems += m.count;
     });
 
-    [...timeline].sort((a, b) => a.date.localeCompare(b.date)).forEach((item) => {
+    // Each month has one tick; its target must be the newest day in that month.
+    [...timeline].sort((a, b) => b.date.localeCompare(a.date)).forEach((item) => {
       const d = new Date(item.date);
       const year = d.getFullYear();
       const month = d.getMonth();
@@ -120,7 +125,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
       if (scrollSpeedRef.current !== 0 && scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop += scrollSpeedRef.current;
         if (lastPointerPosRef.current) {
-          processPointer(lastPointerPosRef.current.x, lastPointerPosRef.current.y);
+          processPointer(lastPointerPosRef.current.x, lastPointerPosRef.current.y - grabOffsetRef.current);
         }
         animationFrameRef.current = requestAnimationFrame(loop);
       } else {
@@ -145,13 +150,15 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
     setIsDragging(true);
     e.currentTarget.setPointerCapture(e.pointerId);
     lastScrubbedDateRef.current = null;
-
-    handleInteraction(e.clientX, e.clientY);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    didDragRef.current = false;
+    grabOffsetRef.current = e.clientY - (outerRef.current?.getBoundingClientRect().top ?? 0) - (thumbTop ?? 0);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging || e.pointerType === 'touch') return;
     e.preventDefault();
+    if (!startDrag(e.clientX, e.clientY)) return;
     handleInteraction(e.clientX, e.clientY);
   };
 
@@ -166,7 +173,9 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
     setIsDragging(true);
     lastScrubbedDateRef.current = null;
     if (e.touches.length > 0) {
-      handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+      dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      didDragRef.current = false;
+      grabOffsetRef.current = e.touches[0].clientY - (outerRef.current?.getBoundingClientRect().top ?? 0) - (thumbTop ?? 0);
     }
   };
 
@@ -174,6 +183,7 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
     if (!isDragging) return;
     if (e.cancelable) e.preventDefault();
     if (e.touches.length > 0) {
+      if (!startDrag(e.touches[0].clientX, e.touches[0].clientY)) return;
       handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
@@ -181,15 +191,27 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
   const handleTouchEnd = (e: React.TouchEvent) => {
     setIsDragging(false);
     stopAutoScroll();
-    if (lastScrubbedDateRef.current) {
+    dragStartRef.current = null;
+    if (didDragRef.current && lastScrubbedDateRef.current) {
       onDateSelect(lastScrubbedDateRef.current);
-      lastScrubbedDateRef.current = null;
     }
+    lastScrubbedDateRef.current = null;
+    didDragRef.current = false;
+    grabOffsetRef.current = 0;
+  };
+
+  const startDrag = (x: number, y: number) => {
+    if (didDragRef.current) return true;
+    const start = dragStartRef.current;
+    if (!start || Math.hypot(x - start.x, y - start.y) < DRAG_THRESHOLD) return false;
+    didDragRef.current = true;
+    return true;
   };
 
   const handleInteraction = (clientX: number, clientY: number) => {
     lastPointerPosRef.current = { x: clientX, y: clientY };
-    updateThumbFromPointer(clientY);
+    const thumbCenterY = clientY - grabOffsetRef.current;
+    updateThumbFromPointer(thumbCenterY);
 
     // Edge scrolling
     if (outerRef.current) {
@@ -211,17 +233,20 @@ export const TimelineScrubber: React.FC<TimelineScrubberProps> = ({
       }
     }
 
-    processPointer(clientX, clientY);
+    processPointer(clientX, thumbCenterY);
   };
 
   const endInteraction = (target: Element, pointerId: number) => {
     setIsDragging(false);
     stopAutoScroll();
+    dragStartRef.current = null;
     target.releasePointerCapture(pointerId);
-    if (lastScrubbedDateRef.current) {
+    if (didDragRef.current && lastScrubbedDateRef.current) {
       onDateSelect(lastScrubbedDateRef.current);
-      lastScrubbedDateRef.current = null;
     }
+    lastScrubbedDateRef.current = null;
+    didDragRef.current = false;
+    grabOffsetRef.current = 0;
   };
 
   const updateThumbFromPointer = (clientY: number) => {

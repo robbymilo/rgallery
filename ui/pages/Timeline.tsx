@@ -670,6 +670,7 @@ const App: React.FC = () => {
             isLoading={isLoading}
             scrollToTarget={scrollToRequest}
             hasMoreItems={hasMoreItems}
+            hasPreviousItems={minOffset > 0}
             filters={convertFiltersToQueryParams(getApiFilters())}
           />
         </div>

@@ -14,6 +14,7 @@ interface VirtualGridProps {
   isLoading: boolean;
   scrollToTarget?: { date: Date; timestamp: number } | null;
   hasMoreItems: boolean;
+  hasPreviousItems: boolean;
   filters: Record<string, string>;
 }
 
@@ -127,6 +128,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   isLoading,
   scrollToTarget,
   hasMoreItems,
+  hasPreviousItems,
   filters,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -297,13 +299,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
 
     const threshold = clientHeight * 1.5;
 
-    if (scrollHeight - scrollTop - clientHeight < threshold && !isLoading && !noMoreTimelineRef.current) {
-      onEndReached();
-      attemptedLoadRef.current = true;
-      loadStartCountRef.current = photos.length;
-    }
-
-    if (scrollTop < threshold && scrollTop > 0 && !isLoading) {
+    if (scrollTop < threshold && hasPreviousItems && !isLoading) {
       const firstPhotoItem = items.find(
         (item) => item.type === NodeType.PHOTO_ROW && (item as PhotoRowNode).photos.length > 0
       ) as PhotoRowNode | undefined;
@@ -312,6 +308,10 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         prevAnchorTopRef.current = firstPhotoItem.top;
       }
       onStartReached();
+    } else if (scrollHeight - scrollTop - clientHeight < threshold && !isLoading && !noMoreTimelineRef.current) {
+      onEndReached();
+      attemptedLoadRef.current = true;
+      loadStartCountRef.current = photos.length;
     }
   };
 
@@ -395,6 +395,25 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
       loadStartCountRef.current = null;
     }
 
+    // A jump can land at scrollTop=0, where scrolling upward produces no
+    // scroll event. Load the preceding page as soon as the jump finishes.
+    if (
+      !isLoading &&
+      containerRef.current &&
+      hasPreviousItems &&
+      containerRef.current.scrollTop < containerRef.current.clientHeight * 1.5
+    ) {
+      const firstPhotoItem = items.find(
+        (item) => item.type === NodeType.PHOTO_ROW && (item as PhotoRowNode).photos.length > 0
+      ) as PhotoRowNode | undefined;
+      if (firstPhotoItem) {
+        prevFirstPhotoIdRef.current = firstPhotoItem.photos[0].id;
+        prevAnchorTopRef.current = firstPhotoItem.top;
+      }
+      onStartReached();
+      return;
+    }
+
     if (!isLoading && containerRef.current && hasMoreItems && !noMoreTimelineRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
       const threshold = clientHeight * 1.5;
@@ -405,7 +424,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         loadStartCountRef.current = photos.length;
       }
     }
-  }, [isLoading, onEndReached, hasMoreItems]);
+  }, [isLoading, onEndReached, onStartReached, hasMoreItems, hasPreviousItems, items]);
 
   return (
     <>
