@@ -25,8 +25,13 @@ func Notify(c Conf, message string, status string) error {
 	return notify.SendToAllUsers(conn, message)
 }
 
-// GetNotifications retrievesall  notifications
-func GetNotifications(c Conf, username string) ([]notify.Notification, error) {
+type NotificationsPage struct {
+	Notifications []notify.Notification
+	Total         int
+}
+
+// GetNotifications retrieves one page of unread notifications for a user.
+func GetNotifications(c Conf, username string, pageSize, offset int) (*NotificationsPage, error) {
 	pool, err := sqlitex.NewPool(database.NewSqlConnectionString(c), sqlitex.PoolOptions{
 		Flags:    sqlite.OpenReadOnly,
 		PoolSize: 5,
@@ -46,14 +51,30 @@ func GetNotifications(c Conf, username string) ([]notify.Notification, error) {
 	}
 	defer pool.Put(conn)
 
-	var notifications []notify.Notification
+	response := &NotificationsPage{Notifications: []notify.Notification{}}
+	countQuery := `SELECT COUNT(*)
+				   FROM notifications n
+				   LEFT JOIN notifications_dismissed nd ON nd.notification_id = n.id AND nd.username = ?
+				   WHERE IFNULL(nd.dismissed, 0) = 0`
+	err = sqlitex.Execute(conn, countQuery, &sqlitex.ExecOptions{
+		Args: []interface{}{username},
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			response.Total = stmt.ColumnInt(0)
+			return nil
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	query := `SELECT n.id, ?, n.message, nd.dismissed, n.created_at
 			  FROM notifications n
 			  LEFT JOIN notifications_dismissed nd ON nd.notification_id = n.id AND nd.username = ?
 			  WHERE IFNULL(nd.dismissed, 0) = 0
-			  ORDER BY n.created_at DESC`
+			  ORDER BY n.created_at DESC, n.id DESC
+			  LIMIT ? OFFSET ?`
 	err = sqlitex.Execute(conn, query, &sqlitex.ExecOptions{
-		Args: []interface{}{username, username},
+		Args: []interface{}{username, username, pageSize, offset},
 		ResultFunc: func(stmt *sqlite.Stmt) error {
 			n := notify.Notification{
 				ID:        stmt.ColumnInt64(0),
@@ -62,12 +83,12 @@ func GetNotifications(c Conf, username string) ([]notify.Notification, error) {
 				IsRead:    stmt.ColumnBool(3),
 				CreatedAt: stmt.ColumnText(4),
 			}
-			notifications = append(notifications, n)
+			response.Notifications = append(response.Notifications, n)
 			return nil
 		},
 	})
 
-	return notifications, err
+	return response, err
 
 }
 

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFullscreen } from '../context/FullscreenContext';
 import { useWebSocketNotifications } from '../hooks/useWebSocketNotifications';
 import { getMemories } from '../services/memories';
+import { clearNotifications, getNotifications, markNotificationAsRead } from '../services/notifications';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useToast } from '../context/ToastContext';
 import { Memory, Notification } from '../types';
@@ -40,6 +41,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsPage, setNotificationsPage] = useState(1);
+  const [notificationsTotal, setNotificationsTotal] = useState(0);
+  const notificationsPageSize = 20;
 
   // WebSocket scan state
   const { isScanInProgress, lastMessage } = useWebSocket();
@@ -71,16 +75,25 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // get notifications
+  const loadNotifications = useCallback(async (page: number) => {
+    try {
+      const data = await getNotifications(page, notificationsPageSize);
+      const lastPage = Math.max(1, Math.ceil((data.meta?.total || 0) / notificationsPageSize));
+      if (page > lastPage) {
+        setNotificationsPage(lastPage);
+        return;
+      }
+      setNotifications(data.notifications || []);
+      setNotificationsTotal(data.meta?.total || 0);
+    } catch (err) {
+      console.error('Failed to fetch notifications', err);
+    }
+  }, []);
+
+  // Get the currently selected notifications page.
   useEffect(() => {
-    fetch('/api/notifications')
-      .then((res) => {
-        if (res.ok) return res.json();
-        return [];
-      })
-      .then((data) => setNotifications(data || []))
-      .catch((err) => console.error('Failed to fetch notifications', err));
-  }, [user]);
+    loadNotifications(notificationsPage);
+  }, [user, notificationsPage, loadNotifications]);
 
   // handle incoming notification messages
   useEffect(() => {
@@ -89,25 +102,33 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       const newNotif = lastMessage as unknown as Notification;
       setNotifications((prev) => {
         if (prev.some((n) => n.id === newNotif.id)) return prev;
-        return [newNotif, ...prev];
+        if (notificationsPage !== 1) return prev;
+        return [newNotif, ...prev].slice(0, notificationsPageSize);
       });
+      setNotificationsTotal((total) => total + 1);
     }
-  }, [lastMessage, user]);
+  }, [lastMessage, user, notificationsPage]);
 
   // Notification handlers for sidebar
-  const handleMarkAsRead = useCallback((id: number) => {
-    fetch(`/api/notifications/${id}`, { method: 'PATCH' }).then((res) => {
-      if (res.ok) {
-        setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-      }
-    });
-  }, []);
+  const handleMarkAsRead = useCallback(async (id: number) => {
+    try {
+      await markNotificationAsRead(id);
+      loadNotifications(notificationsPage);
+    } catch (err) {
+      console.error('Failed to mark notification as read', err);
+    }
+  }, [loadNotifications, notificationsPage]);
 
   // Clear all notifications
   const handleClearAll = useCallback(async () => {
-    await fetch('/api/notifications/clear', { method: 'POST' });
-    setNotifications([]);
-  }, []);
+    try {
+      await clearNotifications();
+      setNotificationsPage(1);
+      loadNotifications(1);
+    } catch (err) {
+      console.error('Failed to clear notifications', err);
+    }
+  }, [loadNotifications]);
 
   const handleCloseNotifications = useCallback(() => setIsNotificationsOpen(false), []);
 
@@ -544,9 +565,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           user={user}
           isOpen={isNotificationsOpen}
           notifications={notifications}
+          page={notificationsPage}
+          total={notificationsTotal}
+          pageSize={notificationsPageSize}
           onClose={handleCloseNotifications}
           onClearAll={handleClearAll}
           onMarkAsRead={handleMarkAsRead}
+          onPageChange={setNotificationsPage}
         />
       </div>
 
