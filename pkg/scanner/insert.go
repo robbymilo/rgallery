@@ -28,9 +28,9 @@ import (
 type Subject = types.Subject
 
 // addImage gathers the exif data of an image and passes it to the db inserter.
-func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
+func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
 
-	image, _, err := exif.GetImageExif("image", relative_path, absolute_path, et, h, c, metrics)
+	image, _, err := exif.GetImageExif("image", relative_path, absolute_path, et, convertedEt, h, c, metrics)
 	if err != nil {
 		return fmt.Errorf("error getting exif: %v", err)
 	}
@@ -82,9 +82,9 @@ func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 }
 
 // addVideo gathers the exif data of an image and passes it to the db inserter.
-func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
+func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
 
-	media, _, err := exif.GetImageExif("video", relative_path, absolute_path, et, h, c, metrics)
+	media, _, err := exif.GetImageExif("video", relative_path, absolute_path, et, convertedEt, h, c, metrics)
 	if err != nil {
 		return fmt.Errorf("error getting video exif: %v", err)
 	}

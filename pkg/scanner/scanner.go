@@ -113,6 +113,20 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 			}
 		}()
 
+		// Raw numeric fields and converted lens names require different
+		// ExifTool modes. Keep one instance of each alive for this scan so
+		// lens extraction does not launch a process for every media item.
+		convertedEt, err := exiftool.NewExiftool(exiftool.Buffer(buf, 256*1024))
+		if err != nil {
+			return "", fmt.Errorf("error starting converted exiftool %v", err)
+		}
+		metrics.ExternalProcess()
+		defer func() {
+			if err := convertedEt.Close(); err != nil {
+				c.Logger.Error("converted et.Close error", "err", err)
+			}
+		}()
+
 		// get all current media items
 		items, err := queries.GetMediaItems(0, "ASC", -1, c)
 		if err != nil {
@@ -165,7 +179,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 				// recreate thumbnails
 				if mediaModified(item, c) {
 
-					err = updateMediaItem(item.Path, true, et, h, c, item, cache, metrics)
+					err = updateMediaItem(item.Path, true, et, convertedEt, h, c, item, cache, metrics)
 					if err != nil {
 						c.Logger.Error("error updating media item", "error", err)
 					} else {
@@ -179,7 +193,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					// remove and add all items
 					// recreate thumbnails
 					c.Logger.Info("deepScanning: " + item.Path)
-					err = updateMediaItem(item.Path, true, et, h, c, item, cache, metrics)
+					err = updateMediaItem(item.Path, true, et, convertedEt, h, c, item, cache, metrics)
 					if err != nil {
 						c.Logger.Error("error updating media item during deep scan", "error", err)
 					} else {
@@ -193,7 +207,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					// remove and add all items
 					// do not recreate thumbnails
 					c.Logger.Info("metadataScanning: " + item.Path)
-					err = updateMediaItem(item.Path, false, et, h, c, item, cache, metrics)
+					err = updateMediaItem(item.Path, false, et, convertedEt, h, c, item, cache, metrics)
 					if err != nil {
 						c.Logger.Error("error updating media item during metadata scan", "error", err)
 					} else {
@@ -265,7 +279,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 
 					// check if file is an image
 					if isImage(p) {
-						err = addImage(relative_path, absolute_path, false, c.PreGenerateThumb, et, h, c, cache, metrics)
+						err = addImage(relative_path, absolute_path, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
 						if err != nil {
 							c.Logger.Error("error adding image "+absolute_path, "error", err)
 							err := TrackScanError(relative_path, time.Now(), err, c)
@@ -279,7 +293,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 						}
 
 					} else if isVideo(p) {
-						err = addVideo(relative_path, absolute_path, false, c.PreGenerateThumb, et, h, c, cache, metrics)
+						err = addVideo(relative_path, absolute_path, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
 						if err != nil {
 							c.Logger.Error("error adding video "+absolute_path, "error", err)
 						} else {
