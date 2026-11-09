@@ -87,6 +87,15 @@ export interface Notification {
   created_at: string;
 }
 
+export interface NotificationsResponse {
+  notifications: Notification[];
+  meta: {
+    page: number;
+    pageSize: number;
+    total: number;
+  };
+}
+
 export interface ApiTimelineItem {
   date: string;
   count: number;

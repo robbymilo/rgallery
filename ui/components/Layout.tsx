@@ -7,7 +7,7 @@ import { useWebSocketNotifications } from '../hooks/useWebSocketNotifications';
 import { getMemories } from '../services/memories';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useToast } from '../context/ToastContext';
-import { Memory, Notification } from '../types';
+import { Memory, Notification, NotificationsResponse } from '../types';
 import NotificationsSidebar from './NotificationsSidebar';
 import version from '../version.json';
 import Logo from '../svg/logo.svg?react';
@@ -40,6 +40,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsPage, setNotificationsPage] = useState(1);
+  const [notificationsTotal, setNotificationsTotal] = useState(0);
+  const notificationsPageSize = 20;
 
   // WebSocket scan state
   const { isScanInProgress, lastMessage } = useWebSocket();
@@ -71,16 +74,27 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // get notifications
+  const loadNotifications = useCallback(async (page: number) => {
+    try {
+      const response = await fetch(`/api/notifications?page=${page}&pageSize=${notificationsPageSize}`);
+      if (!response.ok) return;
+      const data: NotificationsResponse = await response.json();
+      const lastPage = Math.max(1, Math.ceil((data.meta?.total || 0) / notificationsPageSize));
+      if (page > lastPage) {
+        setNotificationsPage(lastPage);
+        return;
+      }
+      setNotifications(data.notifications || []);
+      setNotificationsTotal(data.meta?.total || 0);
+    } catch (err) {
+      console.error('Failed to fetch notifications', err);
+    }
+  }, []);
+
+  // Get the currently selected notifications page.
   useEffect(() => {
-    fetch('/api/notifications')
-      .then((res) => {
-        if (res.ok) return res.json();
-        return [];
-      })
-      .then((data) => setNotifications(data || []))
-      .catch((err) => console.error('Failed to fetch notifications', err));
-  }, [user]);
+    loadNotifications(notificationsPage);
+  }, [user, notificationsPage, loadNotifications]);
 
   // handle incoming notification messages
   useEffect(() => {
@@ -89,25 +103,28 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       const newNotif = lastMessage as unknown as Notification;
       setNotifications((prev) => {
         if (prev.some((n) => n.id === newNotif.id)) return prev;
-        return [newNotif, ...prev];
+        if (notificationsPage !== 1) return prev;
+        return [newNotif, ...prev].slice(0, notificationsPageSize);
       });
+      setNotificationsTotal((total) => total + 1);
     }
-  }, [lastMessage, user]);
+  }, [lastMessage, user, notificationsPage]);
 
   // Notification handlers for sidebar
   const handleMarkAsRead = useCallback((id: number) => {
     fetch(`/api/notifications/${id}`, { method: 'PATCH' }).then((res) => {
       if (res.ok) {
-        setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+        loadNotifications(notificationsPage);
       }
     });
-  }, []);
+  }, [loadNotifications, notificationsPage]);
 
   // Clear all notifications
   const handleClearAll = useCallback(async () => {
     await fetch('/api/notifications/clear', { method: 'POST' });
-    setNotifications([]);
-  }, []);
+    setNotificationsPage(1);
+    loadNotifications(1);
+  }, [loadNotifications]);
 
   const handleCloseNotifications = useCallback(() => setIsNotificationsOpen(false), []);
 
@@ -544,9 +561,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           user={user}
           isOpen={isNotificationsOpen}
           notifications={notifications}
+          page={notificationsPage}
+          total={notificationsTotal}
+          pageSize={notificationsPageSize}
           onClose={handleCloseNotifications}
           onClearAll={handleClearAll}
           onMarkAsRead={handleMarkAsRead}
+          onPageChange={setNotificationsPage}
         />
       </div>
 

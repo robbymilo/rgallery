@@ -6,19 +6,28 @@ interface NotificationsSidebarProps {
   user: User;
   isOpen: boolean;
   notifications: Notification[];
+  page: number;
+  total: number;
+  pageSize: number;
   onClose: () => void;
   onClearAll: () => void;
   onMarkAsRead: (id: number) => void;
+  onPageChange: (page: number) => void;
 }
 
 const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
   user,
   isOpen,
   notifications,
+  page,
+  total,
+  pageSize,
   onClose,
   onClearAll,
   onMarkAsRead,
+  onPageChange,
 }) => {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <div
       id="notifications-offcanvas"
@@ -77,6 +86,27 @@ const NotificationsSidebar: React.FC<NotificationsSidebarProps> = ({
                   <div className="text-[10px] opacity-70">{new Date(n.created_at).toISOString()}</div>
                 </div>
               ))}
+            </div>
+          )}
+          {total > pageSize && (
+            <div className="mt-4 flex items-center justify-between gap-2 px-1 text-charcoal-300">
+              <button
+                onClick={() => onPageChange(page - 1)}
+                disabled={page === 1}
+                className="border-charcoal-700 rounded-md border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => onPageChange(page + 1)}
+                disabled={page === totalPages}
+                className="border-charcoal-700 rounded-md border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
             </div>
           )}
           {user?.role === 'admin' && (
