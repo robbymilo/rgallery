@@ -1,7 +1,6 @@
 package queries_test
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,20 +10,24 @@ import (
 	"github.com/robbymilo/rgallery/pkg/queries"
 	"github.com/robbymilo/rgallery/pkg/types"
 	"github.com/stretchr/testify/require"
+	"zombiezen.com/go/sqlite"
+	"zombiezen.com/go/sqlite/sqlitex"
 )
 
 func TestGetNotificationsPaginatesUnreadNotifications(t *testing.T) {
 	c := types.Conf{Data: t.TempDir(), Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	database.CreateDB(c)
-	db, err := sql.Open("sqlite", database.NewSqlConnectionString(c))
+	db, err := sqlite.OpenConn(database.NewSqlConnectionString(c), sqlite.OpenReadWrite)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 
 	for id := 1; id <= 5; id++ {
-		_, err = db.Exec(`INSERT INTO notifications (id, message, created_at) VALUES (?, ?, ?)`, id, "message", fmt.Sprintf("2025-01-01T00:00:0%dZ", id))
+		err = sqlitex.Execute(db, `INSERT INTO notifications (id, message, created_at) VALUES (?, ?, ?)`, &sqlitex.ExecOptions{
+			Args: []any{id, "message", fmt.Sprintf("2025-01-01T00:00:0%dZ", id)},
+		})
 		require.NoError(t, err)
 	}
-	_, err = db.Exec(`INSERT INTO notifications_dismissed (notification_id, username, dismissed) VALUES (5, 'alice', 1)`)
+	err = sqlitex.Execute(db, `INSERT INTO notifications_dismissed (notification_id, username, dismissed) VALUES (5, 'alice', 1)`, nil)
 	require.NoError(t, err)
 
 	first, err := queries.GetNotifications(c, "alice", 2, 0)
