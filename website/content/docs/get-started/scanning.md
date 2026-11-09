@@ -33,8 +33,23 @@ There are three types of scans:
 1. Metadata scan - re-imports all existing media items without recreating thumbnails.
 1. Deep scan - re-imports all existing media items and recreates thumbnails.
 
-> Only users with the role of admin can initiate scans.
+Only users with the role of **admin** can initiate scans from the web interface or manage scan errors. API keys have admin access and can be used for scheduled scans.
 
 ## Scan Errors
 
-If an error occurs with an image or video during scan, it is skipped on subsequent scans. If the file is updated, it will be scanned again.
+If an image or video fails during a scan, rgallery records the filepath and error in `scan_errors`. The item is skipped on later scans while its modification time is not newer than the recorded error. Updating the file causes it to be retried automatically.
+
+An administrator can also clear the retry marker explicitly:
+
+```shell
+# Reset one path. The path is relative to the media directory.
+rgallery scan-errors reset --path 'photos/failed-photo.jpg'
+
+# The filepath may also be provided as the positional argument.
+rgallery scan-errors reset 'photos/failed-photo.jpg'
+
+# Allow every recorded scan error to be retried.
+rgallery scan-errors reset --all
+```
+
+The same operations are available in the web UI under **Admin → Scan errors**. The page lists errors in pages, supports resetting one item, and has a reset-all action.

@@ -14,6 +14,17 @@ export type AdminData = {
   [key: string]: unknown;
 };
 
+export type ScanError = {
+  path: string;
+  modified: string;
+  error: string;
+};
+
+export type ScanErrorsResponse = {
+  items: ScanError[];
+  meta: { page: number; pageSize: number; total: number };
+};
+
 export async function getAdmin(): Promise<AdminData> {
   const res = await fetch('/api/admin', { credentials: 'include' });
   if (!res.ok) {
@@ -29,4 +40,16 @@ export async function getAdmin(): Promise<AdminData> {
     throw new Error(msg);
   }
   return (await res.json()) as AdminData;
+}
+
+export async function getScanErrors(page: number, pageSize = 25): Promise<ScanErrorsResponse> {
+  const res = await fetch(`/api/admin/scan-errors?page=${page}&pageSize=${pageSize}`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`API Error: ${res.status}`);
+  return (await res.json()) as ScanErrorsResponse;
+}
+
+export async function resetScanError(path?: string): Promise<void> {
+  const query = path ? `?path=${encodeURIComponent(path)}` : '?all=true';
+  const res = await fetch(`/api/admin/scan-errors${query}`, { method: 'DELETE', credentials: 'include' });
+  if (!res.ok) throw new Error((await res.text()) || `API Error: ${res.status}`);
 }
