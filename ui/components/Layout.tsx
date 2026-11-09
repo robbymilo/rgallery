@@ -5,9 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import { useFullscreen } from '../context/FullscreenContext';
 import { useWebSocketNotifications } from '../hooks/useWebSocketNotifications';
 import { getMemories } from '../services/memories';
+import { clearNotifications, getNotifications, markNotificationAsRead } from '../services/notifications';
 import { useWebSocket } from '../context/WebSocketContext';
 import { useToast } from '../context/ToastContext';
-import { Memory, Notification, NotificationsResponse } from '../types';
+import { Memory, Notification } from '../types';
 import NotificationsSidebar from './NotificationsSidebar';
 import version from '../version.json';
 import Logo from '../svg/logo.svg?react';
@@ -76,9 +77,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const loadNotifications = useCallback(async (page: number) => {
     try {
-      const response = await fetch(`/api/notifications?page=${page}&pageSize=${notificationsPageSize}`);
-      if (!response.ok) return;
-      const data: NotificationsResponse = await response.json();
+      const data = await getNotifications(page, notificationsPageSize);
       const lastPage = Math.max(1, Math.ceil((data.meta?.total || 0) / notificationsPageSize));
       if (page > lastPage) {
         setNotificationsPage(lastPage);
@@ -111,19 +110,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [lastMessage, user, notificationsPage]);
 
   // Notification handlers for sidebar
-  const handleMarkAsRead = useCallback((id: number) => {
-    fetch(`/api/notifications/${id}`, { method: 'PATCH' }).then((res) => {
-      if (res.ok) {
-        loadNotifications(notificationsPage);
-      }
-    });
+  const handleMarkAsRead = useCallback(async (id: number) => {
+    try {
+      await markNotificationAsRead(id);
+      loadNotifications(notificationsPage);
+    } catch (err) {
+      console.error('Failed to mark notification as read', err);
+    }
   }, [loadNotifications, notificationsPage]);
 
   // Clear all notifications
   const handleClearAll = useCallback(async () => {
-    await fetch('/api/notifications/clear', { method: 'POST' });
-    setNotificationsPage(1);
-    loadNotifications(1);
+    try {
+      await clearNotifications();
+      setNotificationsPage(1);
+      loadNotifications(1);
+    } catch (err) {
+      console.error('Failed to clear notifications', err);
+    }
   }, [loadNotifications]);
 
   const handleCloseNotifications = useCallback(() => setIsNotificationsOpen(false), []);
