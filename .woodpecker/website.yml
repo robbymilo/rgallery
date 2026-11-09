@@ -35,6 +35,8 @@ steps:
         ref: refs/tags/v*
 
 when:
-  event:
-    - push
-    - tag
+  - event: tag
+  - event: push
+    path:
+      include:
+        - website/**

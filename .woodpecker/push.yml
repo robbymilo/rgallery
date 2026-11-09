@@ -19,8 +19,6 @@ steps:
     commands:
       - apk add make git exiftool ffmpeg gcc g++
       - make test
-    depends_on:
-      - prettier
 
   - name: build
     image: golang:1.25.10-alpine3.23

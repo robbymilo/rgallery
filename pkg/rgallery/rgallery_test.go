@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -26,23 +26,12 @@ type ResponseTags = types.ResponseTags
 type ResponseFolders = types.ResponseFolders
 type ResponseGear = types.ResponseGear
 
-var c = Conf{
-	Dev:              false,
-	DisableAuth:      true,
-	Media:            "../../testdata/media",
-	Cache:            "../../testdata/cache",
-	Data:             "../../testdata/data",
-	PreGenerateThumb: true,
-	ResizeService:    "",
-	LocationDataset:  "Provinces10",
-	Logger:           slog.New(slog.NewTextHandler(os.Stdout, nil)),
-	Memories:         false,
-	TileServer:       `/api/tiles/{z}/{x}/{y}.png`,
-}
+var c Conf
 
 var ca = cache.New(-1, -1)
 
 func TestEndpoints(t *testing.T) {
+	c = newHermeticTestConf(t)
 	aliases := make(map[string]string)
 	aliases["Nikon 105mm f/2.5 Ai-s"] = "Nikon Ai-s 105mm f/2.5"
 	aliases["Nikon 105mm f/2.5 AI-s"] = "Nikon Ai-s 105mm f/2.5"
@@ -63,25 +52,25 @@ func TestEndpoints(t *testing.T) {
 	time.Local = loc
 
 	testEndpoints := []string{
-		"../../testdata/media/2019/20190330-sawtooths/20190330-copper-mtn-robbymilo-1112.jpg",
-		"../../testdata/media/2017/20170624-idaho/20170624-sawtooth-mountain-biking-robbymilo-0030.jpg",
-		"../../testdata/media/2017/20170624-idaho/20170624-sawtooth-mountain-biking-robbymilo-0030 copy.jpg",
-		"../../testdata/media/2015/boise/20150111rmilo-0775.jpg",
-		"../../testdata/media/2015/boise/20150111rmilo-0776.jpg",
-		"../../testdata/media/2016/boise/20160424-boise-robbymilo-0123.jpg",
-		"../../testdata/media/2018/20180304-bogus/20180304-mores-mountain-ski-robbymilo-0230.jpg",
-		"../../testdata/media/2018/20180304-bogus/20180304-mores-mountain-ski-robbymilo-0230 2.jpg",
-		"../../testdata/media/2019/20190518-bogus-basin/20190518-shafer-butte-robbymilo-0007.jpg",
-		"../../testdata/media/2024/105-5.jpg",
-		"../../testdata/media/misc/105-1.jpg",
-		"../../testdata/media/misc/105-2.jpg",
-		"../../testdata/media/misc/105-3.jpg",
-		"../../testdata/media/misc/105-4.jpg",
-		"../../testdata/media/misc/51750950528.jpg",
+		"2019/20190330-sawtooths/20190330-copper-mtn-robbymilo-1112.jpg",
+		"2017/20170624-idaho/20170624-sawtooth-mountain-biking-robbymilo-0030.jpg",
+		"2017/20170624-idaho/20170624-sawtooth-mountain-biking-robbymilo-0030 copy.jpg",
+		"2015/boise/20150111rmilo-0775.jpg",
+		"2015/boise/20150111rmilo-0776.jpg",
+		"2016/boise/20160424-boise-robbymilo-0123.jpg",
+		"2018/20180304-bogus/20180304-mores-mountain-ski-robbymilo-0230.jpg",
+		"2018/20180304-bogus/20180304-mores-mountain-ski-robbymilo-0230 2.jpg",
+		"2019/20190518-bogus-basin/20190518-shafer-butte-robbymilo-0007.jpg",
+		"2024/105-5.jpg",
+		"misc/105-1.jpg",
+		"misc/105-2.jpg",
+		"misc/105-3.jpg",
+		"misc/105-4.jpg",
+		"misc/51750950528.jpg",
 	}
 
 	for _, i := range testEndpoints {
-		setModTime(i)
+		setModTime(filepath.Join(c.Media, i))
 	}
 
 	database.CreateDB(c)
@@ -195,7 +184,7 @@ func testStatusCode(t *testing.T, path string, statusCode int) {
 
 func testThumbnail(t *testing.T, id, size string) {
 	var exists bool
-	path := "../../testdata/cache/" + size + "/" + id + ".jpg"
+	path := filepath.Join(c.Cache, size, id+".jpg")
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		exists = false
 	} else {

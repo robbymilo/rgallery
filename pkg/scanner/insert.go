@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	exiftool "github.com/barasher/go-exiftool"
 	"github.com/cenkalti/dominantcolor"
@@ -27,19 +28,42 @@ import (
 type Subject = types.Subject
 
 // addImage gathers the exif data of an image and passes it to the db inserter.
-func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache) error {
+func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
 
-	image, _, err := exif.GetImageExif("image", relative_path, absolute_path, et, h, c)
+	image, _, err := exif.GetImageExif("image", relative_path, absolute_path, et, h, c, metrics)
 	if err != nil {
 		return fmt.Errorf("error getting exif: %v", err)
 	}
 
+	started := time.Now()
 	generated, err := resize.HandleResize(regenThumb, image, c)
+	if metrics != nil {
+		metrics.addDuration(&metrics.data.ThumbnailGeneration, time.Since(started))
+		if c.PreGenerateThumb && regenThumb {
+			metrics.mu.Lock()
+			metrics.data.ThumbnailCount += generated
+			metrics.data.CacheWrites += generated
+			metrics.mu.Unlock()
+		}
+		metrics.sampleMemory()
+	}
 	if err != nil {
 		return fmt.Errorf("error resizing image: %v", err)
 	}
 
-	err = insertMediaItem(image, c)
+	started = time.Now()
+	err = insertMediaItem(image, c, metrics)
+	if metrics != nil {
+		metrics.addDuration(&metrics.data.DatabaseWrites, time.Since(started))
+		metrics.mu.Lock()
+		metrics.data.DatabaseWriteCount++
+		metrics.data.DatabaseTransactions++
+		metrics.mu.Unlock()
+		metrics.sampleMemory()
+		metrics.mu.Lock()
+		metrics.data.MediaProcessed++
+		metrics.mu.Unlock()
+	}
 	if err != nil {
 		return fmt.Errorf("error inserting image: %v", err)
 	}
@@ -58,19 +82,40 @@ func addImage(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 }
 
 // addVideo gathers the exif data of an image and passes it to the db inserter.
-func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache) error {
+func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
 
-	media, _, err := exif.GetImageExif("video", relative_path, absolute_path, et, h, c)
+	media, _, err := exif.GetImageExif("video", relative_path, absolute_path, et, h, c, metrics)
 	if err != nil {
 		return fmt.Errorf("error getting video exif: %v", err)
 	}
 
+	started := time.Now()
 	generated, err := resize.HandleResize(regenThumb, media, c)
+	if metrics != nil {
+		metrics.addDuration(&metrics.data.ThumbnailGeneration, time.Since(started))
+		metrics.mu.Lock()
+		metrics.data.ThumbnailCount += generated
+		metrics.data.CacheWrites += generated
+		metrics.mu.Unlock()
+		metrics.sampleMemory()
+		metrics.mu.Lock()
+		metrics.data.MediaProcessed++
+		metrics.mu.Unlock()
+	}
 	if err != nil {
 		return fmt.Errorf("error resizing video thumb: %v", err)
 	}
 
+	started = time.Now()
 	im, err := resize.GenerateSingleThumb(absolute_path, media, 400, c)
+	if metrics != nil {
+		metrics.addDuration(&metrics.data.ThumbnailGeneration, time.Since(started))
+		metrics.mu.Lock()
+		metrics.data.ThumbnailCount++
+		metrics.data.CacheWrites++
+		metrics.mu.Unlock()
+		metrics.sampleMemory()
+	}
 	if err != nil {
 		return fmt.Errorf("error creating video thumb for dominant color: %v ", err)
 	}
@@ -93,7 +138,16 @@ func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 		}
 	}
 
-	err = insertMediaItem(media, c)
+	started = time.Now()
+	err = insertMediaItem(media, c, metrics)
+	if metrics != nil {
+		metrics.addDuration(&metrics.data.DatabaseWrites, time.Since(started))
+		metrics.mu.Lock()
+		metrics.data.DatabaseWriteCount++
+		metrics.data.DatabaseTransactions++
+		metrics.mu.Unlock()
+		metrics.sampleMemory()
+	}
 	if err != nil {
 		fmt.Printf("error inserting image: %s %s\n", media.Path, err)
 		return err
@@ -113,7 +167,7 @@ func addVideo(relative_path, absolute_path string, isUpdate, regenThumb bool, et
 }
 
 // insertMediaItem coordinates inserting a media item, and it's tags, folders and their relationships to the database.
-func insertMediaItem(media Media, c Conf) error {
+func insertMediaItem(media Media, c Conf, metrics *scanMetrics) error {
 
 	if media.Date.Year() == 0001 {
 		return errors.New("skipping insert, media has no date")
