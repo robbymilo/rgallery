@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/disintegration/imageorient"
 	"github.com/disintegration/imaging"
@@ -22,6 +23,29 @@ import (
 
 type Conf = types.Conf
 type Media = types.Media
+
+var externalProcessObserver struct {
+	sync.RWMutex
+	fn func()
+}
+
+// SetExternalProcessObserver installs a scan-local observer for helper
+// processes started by image and video processing. The scanner is single
+// flight, so one observer is sufficient and it is cleared when the scan ends.
+func SetExternalProcessObserver(fn func()) {
+	externalProcessObserver.Lock()
+	externalProcessObserver.fn = fn
+	externalProcessObserver.Unlock()
+}
+
+func observeExternalProcess() {
+	externalProcessObserver.RLock()
+	fn := externalProcessObserver.fn
+	externalProcessObserver.RUnlock()
+	if fn != nil {
+		fn()
+	}
+}
 
 // GenerateSingleThumb serves a generated thumbnail from the original media.
 func GenerateSingleThumb(path string, media Media, size int, c Conf) ([]byte, error) {
@@ -170,6 +194,7 @@ func CreateSaveVideoThumb(path string, media Media, size int, c Conf) ([]byte, e
 func GetFFMPEGThumb(video string, frameNum int) (io.Reader, error) {
 
 	buf := bytes.NewBuffer(nil)
+	observeExternalProcess()
 	err := ffmpeg.Input(video).
 		Filter("select", ffmpeg.Args{fmt.Sprintf("gte(n,%d)", frameNum)}).
 		Output("pipe:", ffmpeg.KwArgs{"vframes": 1, "format": "image2", "vcodec": "mjpeg"}).
@@ -242,6 +267,7 @@ func saveTempHeic(path string) (string, error) {
 
 		tmpFile := tmpDir + filepath.Base(path) + ".jpg"
 		cmd := exec.Command("vips", "resize", path, tmpFile, "1")
+		observeExternalProcess()
 		_, err = cmd.CombinedOutput()
 		if err != nil {
 			return "", fmt.Errorf("error calling vips command: %v", err)

@@ -66,6 +66,13 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		}
 		// Set scan in progress to true
 		SetScanInProgress(true)
+		metrics := newScanMetrics(scanType)
+		resize.SetExternalProcessObserver(metrics.ExternalProcess)
+		defer func() {
+			resize.SetExternalProcessObserver(nil)
+			metrics.finish()
+			setLastScanMetrics(metrics.snapshot())
+		}()
 
 		// create a cancel channel for this scan
 		resetCancelChan(make(chan struct{}))
@@ -99,6 +106,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("error starting exiftool %v", err)
 		}
+		metrics.ExternalProcess()
 		defer func() {
 			if err := et.Close(); err != nil {
 				c.Logger.Error("et.Close error", "err", err)
@@ -132,7 +140,13 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 			}
 
 			// if deleted image exists in db
-			if _, err := os.Stat(filepath.Join(config.MediaPath(c), item.Path)); errors.Is(err, os.ErrNotExist) {
+			statStarted := time.Now()
+			_, statErr := os.Stat(filepath.Join(config.MediaPath(c), item.Path))
+			metrics.addDuration(&metrics.data.FilesystemStat, time.Since(statStarted))
+			metrics.mu.Lock()
+			metrics.data.StatCalls++
+			metrics.mu.Unlock()
+			if errors.Is(statErr, os.ErrNotExist) {
 
 				// remove if deleted
 				err := deleteMediaItem(item.Path, true, item, c, cache)
@@ -151,7 +165,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 				// recreate thumbnails
 				if mediaModified(item, c) {
 
-					err = updateMediaItem(item.Path, true, et, h, c, item, cache)
+					err = updateMediaItem(item.Path, true, et, h, c, item, cache, metrics)
 					if err != nil {
 						c.Logger.Error("error updating media item", "error", err)
 					} else {
@@ -165,7 +179,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					// remove and add all items
 					// recreate thumbnails
 					c.Logger.Info("deepScanning: " + item.Path)
-					err = updateMediaItem(item.Path, true, et, h, c, item, cache)
+					err = updateMediaItem(item.Path, true, et, h, c, item, cache, metrics)
 					if err != nil {
 						c.Logger.Error("error updating media item during deep scan", "error", err)
 					} else {
@@ -179,7 +193,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					// remove and add all items
 					// do not recreate thumbnails
 					c.Logger.Info("metadataScanning: " + item.Path)
-					err = updateMediaItem(item.Path, false, et, h, c, item, cache)
+					err = updateMediaItem(item.Path, false, et, h, c, item, cache, metrics)
 					if err != nil {
 						c.Logger.Error("error updating media item during metadata scan", "error", err)
 					} else {
@@ -196,6 +210,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 
 		c.Logger.Info("checking for new items...")
 
+		discoveryStarted := time.Now()
 		err = filepath.WalkDir(config.MediaPath(c), func(p string, info fs.DirEntry, err error) error {
 			// Add panic recovery for each file processing
 			defer func() {
@@ -211,6 +226,9 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 
 			}
 			if !info.IsDir() {
+				metrics.mu.Lock()
+				metrics.data.FilesDiscovered++
+				metrics.mu.Unlock()
 
 				// check for cancellation inside file walk
 				if isCanceled() {
@@ -223,9 +241,15 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 				absolute_path := filepath.Join(config.MediaPath(c), relative_path)
 
 				// check if image exists in db
+				statStarted := time.Now()
 				file, err := os.Stat(absolute_path)
+				metrics.addDuration(&metrics.data.FilesystemStat, time.Since(statStarted))
+				metrics.mu.Lock()
+				metrics.data.StatCalls++
+				metrics.mu.Unlock()
 				if err != nil {
 					c.Logger.Error("error stating file:", "error", err)
+					return nil
 				}
 
 				// skip previously scanned items that had an error
@@ -241,7 +265,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 
 					// check if file is an image
 					if isImage(p) {
-						err = addImage(relative_path, absolute_path, false, c.PreGenerateThumb, et, h, c, cache)
+						err = addImage(relative_path, absolute_path, false, c.PreGenerateThumb, et, h, c, cache, metrics)
 						if err != nil {
 							c.Logger.Error("error adding image "+absolute_path, "error", err)
 							err := TrackScanError(relative_path, time.Now(), err, c)
@@ -255,7 +279,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 						}
 
 					} else if isVideo(p) {
-						err = addVideo(relative_path, absolute_path, false, c.PreGenerateThumb, et, h, c, cache)
+						err = addVideo(relative_path, absolute_path, false, c.PreGenerateThumb, et, h, c, cache, metrics)
 						if err != nil {
 							c.Logger.Error("error adding video "+absolute_path, "error", err)
 						} else {
@@ -276,6 +300,8 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 			return nil
 
 		})
+		metrics.addDuration(&metrics.data.FilesystemDiscovery, time.Since(discoveryStarted))
+		metrics.sampleMemory()
 
 		if err != nil {
 			if err.Error() == "scan canceled" {

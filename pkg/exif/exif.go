@@ -28,9 +28,26 @@ type Subject = types.Subject
 type imaging = image.Image
 type Conf = types.Conf
 
+// Metrics receives timing information from metadata extraction without making
+// the exif package depend on the scanner package.
+type Metrics interface {
+	Metadata(time.Duration)
+	Lens(time.Duration)
+	ImageProcessing(time.Duration)
+	ReverseGeocode(time.Duration)
+	ExternalProcess()
+}
+
 // GetLens starts a new exiftool instance to retrieve the lens name. A new instance is needed as we pass "NoPrintConversion" to the other exiftool instance, which returns lens names such as "B0 00 50 50 14 14 B2 06" or "50 50 1.8 1.8 6" instead of the desired "AF-S Nikkor 50mm f/1.8G".
 func GetLens(absolute_path string) (string, error) {
+	return getLens(absolute_path, nil)
+}
+
+func getLens(absolute_path string, metrics Metrics) (string, error) {
 	buf := make([]byte, 1024*1024)
+	if metrics != nil {
+		metrics.ExternalProcess()
+	}
 	et, err := exiftool.NewExiftool(exiftool.Buffer(buf, 256*1024))
 	if err != nil {
 		return "", fmt.Errorf("error starting exiftool: %v", err)
@@ -41,7 +58,11 @@ func GetLens(absolute_path string) (string, error) {
 		}
 	}()
 
+	started := time.Now()
 	exif := et.ExtractMetadata(absolute_path)
+	if metrics != nil {
+		metrics.Lens(time.Since(started))
+	}
 
 	var lens string
 	for _, fileInfo := range exif {
@@ -58,11 +79,15 @@ func GetLens(absolute_path string) (string, error) {
 }
 
 // GetImageExif returns the exif data of a media item.
-func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.Exiftool, h *geo.Handlers, c Conf) (Media, imaging, error) {
+func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.Exiftool, h *geo.Handlers, c Conf, metrics Metrics) (Media, imaging, error) {
 	// relative_path is everything after the media dir
 	hash := hash.GetHash(relative_path)
 
+	started := time.Now()
 	exif := et.ExtractMetadata(absolute_path)
+	if metrics != nil {
+		metrics.Metadata(time.Since(started))
+	}
 
 	file, err := os.Stat(absolute_path)
 	if err != nil {
@@ -79,6 +104,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 	switch mediatype {
 	case "image":
 		// need to open separately from exiftool to get correct orientation
+		started = time.Now()
 		img, err = resize.DecodeImage(absolute_path)
 		if err != nil {
 			return Media{}, nil, err
@@ -86,6 +112,9 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 
 		// dominant color
 		color = dominantcolor.Hex(dominantcolor.Find(img))
+		if metrics != nil {
+			metrics.ImageProcessing(time.Since(started))
+		}
 
 		// orientation
 		bounds := img.Bounds()
@@ -270,7 +299,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 			}
 		}
 
-		lens, err := GetLens(absolute_path)
+		lens, err := getLens(absolute_path, metrics)
 		if err != nil {
 			return Media{}, nil, fmt.Errorf("error getting lens exif: %v", err)
 		}
@@ -324,6 +353,7 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 		if longitude != 0 && latitude != 0 {
 
 			var loc rgeo.Location
+			started = time.Now()
 			if c.LocationService == "" {
 				loc, err = geo.GetLocation(h, longitude, latitude, c)
 				if err != nil {
@@ -335,6 +365,9 @@ func GetImageExif(mediatype, relative_path, absolute_path string, et *exiftool.E
 				if err != nil {
 					return Media{}, nil, fmt.Errorf("error getting location from location service: %v", err)
 				}
+			}
+			if metrics != nil {
+				metrics.ReverseGeocode(time.Since(started))
 			}
 
 			city := loc.City

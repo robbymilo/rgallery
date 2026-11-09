@@ -10,7 +10,7 @@ import (
 )
 
 // updateMediaItem removes a media item from the db, and initiates a new addition of the same item.
-func updateMediaItem(relative_path string, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, media Media, cache *cache.Cache) error {
+func updateMediaItem(relative_path string, regenThumb bool, et *exiftool.Exiftool, h *geo.Handlers, c Conf, media Media, cache *cache.Cache, metrics *scanMetrics) error {
 
 	// remove media
 	err := deleteMediaItem(relative_path, false, media, c, cache)
@@ -22,7 +22,7 @@ func updateMediaItem(relative_path string, regenThumb bool, et *exiftool.Exiftoo
 	absolute_path := filepath.Join(config.MediaPath(c), relative_path)
 
 	if isImage(absolute_path) {
-		err = addImage(relative_path, absolute_path, true, regenThumb, et, h, c, cache)
+		err = addImage(relative_path, absolute_path, true, regenThumb, et, h, c, cache, metrics)
 		if err != nil {
 			c.Logger.Error("error updating image", "err", err)
 			return err
@@ -30,7 +30,7 @@ func updateMediaItem(relative_path string, regenThumb bool, et *exiftool.Exiftoo
 	}
 
 	if isVideo(absolute_path) {
-		err = addVideo(relative_path, absolute_path, true, regenThumb, et, h, c, cache)
+		err = addVideo(relative_path, absolute_path, true, regenThumb, et, h, c, cache, metrics)
 		if err != nil {
 			c.Logger.Error("error updating video", "err", err)
 			return err
