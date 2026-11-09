@@ -1,6 +1,7 @@
 package geo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -53,22 +54,40 @@ func NewGeoHandler(c Conf) (*Handlers, error) {
 }
 
 func GetLocation(h *Handlers, lon, lat float64, c Conf) (Location, error) {
+	return GetLocationContext(context.Background(), h, lon, lat, c)
+}
+
+func GetLocationContext(ctx context.Context, h *Handlers, lon, lat float64, c Conf) (Location, error) {
+	if err := ctx.Err(); err != nil {
+		return Location{}, err
+	}
 
 	loc, err := h.r.ReverseGeocode([]float64{lon, lat})
 	if err != nil {
 		c.Logger.Error("error getting location data", "error", err)
 	}
 
+	if err := ctx.Err(); err != nil {
+		return Location{}, err
+	}
 	return loc, nil
 }
 
 func ReverseGeocode(lon, lat float64, c Conf) (Location, error) {
+	return ReverseGeocodeContext(context.Background(), lon, lat, c)
+}
+
+func ReverseGeocodeContext(ctx context.Context, lon, lat float64, c Conf) (Location, error) {
 	baseURL, err := url.Parse(fmt.Sprintf("%s/?lon=%v&lat=%v", c.LocationService, lon, lat))
 	if err != nil {
 		return Location{}, err
 	}
 
-	response, err := http.Get(baseURL.String())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL.String(), nil)
+	if err != nil {
+		return Location{}, err
+	}
+	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return Location{}, err
 	}

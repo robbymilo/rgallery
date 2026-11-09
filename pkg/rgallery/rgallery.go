@@ -200,6 +200,42 @@ func SetupApp(Commit, Tag string) {
 				},
 			},
 			{
+				Name:  "scan-errors",
+				Usage: "Inspect and reset files that failed during scanning.",
+				Flags: flags,
+				Subcommands: []*cli.Command{
+					{
+						Name:  "reset",
+						Usage: "Reset one scan error by filepath, or all scan errors with --all.",
+						Flags: append(flags,
+							&cli.StringFlag{Name: "path", Usage: "Relative media filepath to reset."},
+							&cli.BoolFlag{Name: "all", Usage: "Reset every recorded scan error."},
+						),
+						Action: func(cCtx *cli.Context) error {
+							c := config.GetConf(*cCtx, Commit, Tag)
+							database.CreateDB(c)
+							path := cCtx.String("path")
+							if path == "" && cCtx.Args().Len() == 1 {
+								path = cCtx.Args().First()
+							}
+							resetAll := cCtx.Bool("all")
+							if (path == "") == !resetAll {
+								return fmt.Errorf("provide exactly one filepath or --all")
+							}
+							if resetAll {
+								err = scanner.ResetAllScanErrors(c)
+							} else {
+								err = scanner.ResetScanError(path, c)
+							}
+							if err != nil {
+								return fmt.Errorf("resetting scan errors: %w", err)
+							}
+							return nil
+						},
+					},
+				},
+			},
+			{
 				Name:  "users",
 				Usage: "Options for user tasks",
 				Flags: flags,

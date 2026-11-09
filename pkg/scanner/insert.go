@@ -28,9 +28,12 @@ import (
 type Subject = types.Subject
 
 // addImage gathers the exif data of an image and passes it to the db inserter.
-func addImage(relative_path, absolute_path string, signature fileSignature, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
+func addImage(ctx context.Context, relative_path, absolute_path string, signature fileSignature, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
 
-	image, _, err := exif.GetImageExif("image", relative_path, absolute_path, et, convertedEt, h, c, metrics)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	image, _, err := exif.GetImageExifWithConvertedContext(ctx, "image", relative_path, absolute_path, et, convertedEt, h, c, metrics)
 	if err != nil {
 		return fmt.Errorf("error getting exif: %v", err)
 	}
@@ -40,6 +43,9 @@ func addImage(relative_path, absolute_path string, signature fileSignature, isUp
 
 	started := time.Now()
 	generated, err := resize.HandleResize(regenThumb, image, c)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if metrics != nil {
 		metrics.addDuration(&metrics.data.ThumbnailGeneration, time.Since(started))
 		if c.PreGenerateThumb && regenThumb {
@@ -55,7 +61,7 @@ func addImage(relative_path, absolute_path string, signature fileSignature, isUp
 	}
 
 	started = time.Now()
-	err = insertMediaItem(image, c, metrics)
+	err = insertMediaItemContext(ctx, image, c, metrics)
 	if metrics != nil {
 		metrics.addDuration(&metrics.data.DatabaseWrites, time.Since(started))
 		metrics.mu.Lock()
@@ -85,9 +91,12 @@ func addImage(relative_path, absolute_path string, signature fileSignature, isUp
 }
 
 // addVideo gathers the exif data of an image and passes it to the db inserter.
-func addVideo(relative_path, absolute_path string, signature fileSignature, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
+func addVideo(ctx context.Context, relative_path, absolute_path string, signature fileSignature, isUpdate, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, cache *cache.Cache, metrics *scanMetrics) error {
 
-	media, _, err := exif.GetImageExif("video", relative_path, absolute_path, et, convertedEt, h, c, metrics)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	media, _, err := exif.GetImageExifWithConvertedContext(ctx, "video", relative_path, absolute_path, et, convertedEt, h, c, metrics)
 	if err != nil {
 		return fmt.Errorf("error getting video exif: %v", err)
 	}
@@ -97,6 +106,9 @@ func addVideo(relative_path, absolute_path string, signature fileSignature, isUp
 
 	started := time.Now()
 	generated, err := resize.HandleResize(regenThumb, media, c)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if metrics != nil {
 		metrics.addDuration(&metrics.data.ThumbnailGeneration, time.Since(started))
 		metrics.mu.Lock()
@@ -114,6 +126,9 @@ func addVideo(relative_path, absolute_path string, signature fileSignature, isUp
 
 	started = time.Now()
 	im, err := resize.GenerateSingleThumb(absolute_path, media, 400, c)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if metrics != nil {
 		metrics.addDuration(&metrics.data.ThumbnailGeneration, time.Since(started))
 		metrics.mu.Lock()
@@ -137,6 +152,9 @@ func addVideo(relative_path, absolute_path string, signature fileSignature, isUp
 
 	// pre-transcode image
 	if c.PreGenerateThumb && regenThumb {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		index_file := transcode.CreateHLSIndexFilePath(media.Hash, c)
 		err = transcode.TranscodeWithLock(absolute_path, index_file, media.Hash, c)
 		if err != nil {
@@ -145,7 +163,7 @@ func addVideo(relative_path, absolute_path string, signature fileSignature, isUp
 	}
 
 	started = time.Now()
-	err = insertMediaItem(media, c, metrics)
+	err = insertMediaItemContext(ctx, media, c, metrics)
 	if metrics != nil {
 		metrics.addDuration(&metrics.data.DatabaseWrites, time.Since(started))
 		metrics.mu.Lock()
@@ -172,8 +190,9 @@ func addVideo(relative_path, absolute_path string, signature fileSignature, isUp
 
 }
 
-// insertMediaItem coordinates inserting a media item, and it's tags, folders and their relationships to the database.
-func insertMediaItem(media Media, c Conf, metrics *scanMetrics) error {
+// insertMediaItemContext coordinates inserting a media item, and its tags,
+// folders, and relationships to the database.
+func insertMediaItemContext(ctx context.Context, media Media, c Conf, metrics *scanMetrics) error {
 
 	if media.Date.Year() == 0001 {
 		return errors.New("skipping insert, media has no date")
@@ -194,7 +213,7 @@ func insertMediaItem(media Media, c Conf, metrics *scanMetrics) error {
 	}()
 
 	// Take a connection from the pool
-	conn, err := pool.Take(context.Background())
+	conn, err := pool.Take(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to take connection from pool: %w", err)
 	}
@@ -211,6 +230,9 @@ func insertMediaItem(media Media, c Conf, metrics *scanMetrics) error {
 	var retryCount int
 
 	for retryCount < maxRetries {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		err = sqlitex.Execute(conn, "BEGIN TRANSACTION", nil)
 		if err != nil {
 			retryCount++
@@ -362,6 +384,13 @@ func insertMediaItem(media Media, c Conf, metrics *scanMetrics) error {
 				c.Logger.Error("error executing rollback", "error", rollbackErr)
 			}
 			return fmt.Errorf("error inserting image: %v", err)
+		}
+
+		if err := ctx.Err(); err != nil {
+			if rollbackErr := sqlitex.Execute(conn, "ROLLBACK", nil); rollbackErr != nil {
+				c.Logger.Error("error executing rollback", "error", rollbackErr)
+			}
+			return err
 		}
 
 		// Try to commit the transaction

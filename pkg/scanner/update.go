@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"path/filepath"
 
 	exiftool "github.com/barasher/go-exiftool"
@@ -10,7 +11,10 @@ import (
 )
 
 // updateMediaItem removes a media item from the db, and initiates a new addition of the same item.
-func updateMediaItem(relative_path string, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, media Media, cache *cache.Cache, metrics *scanMetrics, signature fileSignature) error {
+func updateMediaItem(ctx context.Context, relative_path string, regenThumb bool, et, convertedEt *exiftool.Exiftool, h *geo.Handlers, c Conf, media Media, cache *cache.Cache, metrics *scanMetrics, signature fileSignature) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	// remove media
 	err := deleteMediaItem(relative_path, false, media, c, cache)
@@ -22,7 +26,7 @@ func updateMediaItem(relative_path string, regenThumb bool, et, convertedEt *exi
 	absolute_path := filepath.Join(config.MediaPath(c), relative_path)
 
 	if isImage(absolute_path) {
-		err = addImage(relative_path, absolute_path, signature, true, regenThumb, et, convertedEt, h, c, cache, metrics)
+		err = addImage(ctx, relative_path, absolute_path, signature, true, regenThumb, et, convertedEt, h, c, cache, metrics)
 		if err != nil {
 			c.Logger.Error("error updating image", "err", err)
 			return err
@@ -30,7 +34,7 @@ func updateMediaItem(relative_path string, regenThumb bool, et, convertedEt *exi
 	}
 
 	if isVideo(absolute_path) {
-		err = addVideo(relative_path, absolute_path, signature, true, regenThumb, et, convertedEt, h, c, cache, metrics)
+		err = addVideo(ctx, relative_path, absolute_path, signature, true, regenThumb, et, convertedEt, h, c, cache, metrics)
 		if err != nil {
 			c.Logger.Error("error updating video", "err", err)
 			return err

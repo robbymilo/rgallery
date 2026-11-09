@@ -6,6 +6,7 @@ import Loading from '../components/Loading';
 import Error from '../components/Error';
 import { getAdmin, AdminData, AdminApiKey } from '../services/admin';
 import { User } from '../types';
+import { Link } from 'react-router-dom';
 
 enum ScanDescriptions {
   Scan = 'Scan for new and modified items and remove deleted items.',
@@ -187,6 +188,7 @@ const Admin: React.FC = () => {
       <div className="flex flex-col justify-between md:flex-row md:items-center">
         <div>
           <h1>Admin</h1>
+          <Link to="/admin/scan-errors" className="text-primary-400 text-sm hover:underline">View scan errors</Link>
         </div>
       </div>
 

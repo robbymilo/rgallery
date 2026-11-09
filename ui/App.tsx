@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import Timeline from './pages/Timeline';
 import MediaDetail from './pages/MediaDetail';
 import Admin from './pages/Admin';
+import AdminScanErrors from './pages/AdminScanErrors';
 import FolderBrowser from './pages/FolderBrowser';
 import Login from './pages/Login';
 import Memories from './pages/Memories';
@@ -108,6 +109,11 @@ const router = createBrowserRouter([
         handle: {
           title: 'Admin',
         },
+      },
+      {
+        path: 'admin/scan-errors',
+        element: <AdminScanErrors />,
+        handle: { title: 'Scan errors' },
       },
       {
         path: 'map',

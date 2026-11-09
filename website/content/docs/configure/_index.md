@@ -19,7 +19,9 @@ DESCRIPTION:
    The timeline for your photo and video library.
 
 COMMANDS:
-   scan     Scan the media directory for new, modified, or delete media items.
+   scan     Scan the media directory for new, modified, or deleted media items.
+   scan-errors reset
+              Reset one scan error by filepath or all scan errors with --all.
    users    Options for user tasks
    help, h  Shows a list of commands or help for one command
 

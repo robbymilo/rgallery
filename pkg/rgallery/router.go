@@ -135,6 +135,8 @@ func SetupRouter(c Conf, cache *cache.Cache, Commit, Tag string) *chi.Mux {
 		r.With(middleware.Admin(c)).Get("/admin", func(w http.ResponseWriter, r *http.Request) {
 			server.ServeAdmin(w, r, c)
 		})
+		r.With(middleware.Admin(c)).Get("/admin/scan-errors", server.ServeScanErrors)
+		r.With(middleware.Admin(c)).Delete("/admin/scan-errors", server.ResetScanErrors)
 
 		r.Get("/tiles/{z}/{x}/{y}.png", func(w http.ResponseWriter, r *http.Request) {
 			server.ServeTiles(w, r, c)
