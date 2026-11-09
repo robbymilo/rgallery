@@ -127,7 +127,8 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 			}
 		}()
 
-		// get all current media items
+		// get all current media items. Discovery uses a path map so each
+		// filesystem entry is checked in constant time.
 		items, err := queries.GetMediaItems(0, "ASC", -1, c)
 		if err != nil {
 			return "", fmt.Errorf("error getting media items %v", err)
@@ -136,6 +137,10 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 		scanErrors, err := GetScanErrors(c)
 		if err != nil {
 			c.Logger.Error("error getting scan errors", "error", err)
+		}
+		itemsByPath := make(map[string]Media, len(items))
+		for _, item := range items {
+			itemsByPath[item.Path] = item
 		}
 
 		c.Logger.Info("checking for modified and deleted items...")
@@ -155,12 +160,12 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 
 			// if deleted image exists in db
 			statStarted := time.Now()
-			_, statErr := os.Stat(filepath.Join(config.MediaPath(c), item.Path))
+			file, statErr := os.Stat(filepath.Join(config.MediaPath(c), item.Path))
 			metrics.addDuration(&metrics.data.FilesystemStat, time.Since(statStarted))
 			metrics.mu.Lock()
 			metrics.data.StatCalls++
 			metrics.mu.Unlock()
-			if errors.Is(statErr, os.ErrNotExist) {
+			if statErr != nil && classifyStatError(statErr) == statNotFound {
 
 				// remove if deleted
 				err := deleteMediaItem(item.Path, true, item, c, cache)
@@ -173,13 +178,15 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					c.Logger.Error("Notify error", "err", err)
 				}
 
+			} else if statErr != nil {
+				c.Logger.Error("error stating existing media", "path", item.Path, "kind", classifyStatError(statErr), "error", statErr)
 			} else {
 
 				// check existing image for modifications
 				// recreate thumbnails
-				if mediaModified(item, c) {
+				if mediaModified(item, file, c) {
 
-					err = updateMediaItem(item.Path, true, et, convertedEt, h, c, item, cache, metrics)
+					err = updateMediaItem(item.Path, true, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
 					if err != nil {
 						c.Logger.Error("error updating media item", "error", err)
 					} else {
@@ -193,7 +200,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					// remove and add all items
 					// recreate thumbnails
 					c.Logger.Info("deepScanning: " + item.Path)
-					err = updateMediaItem(item.Path, true, et, convertedEt, h, c, item, cache, metrics)
+					err = updateMediaItem(item.Path, true, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
 					if err != nil {
 						c.Logger.Error("error updating media item during deep scan", "error", err)
 					} else {
@@ -207,7 +214,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 					// remove and add all items
 					// do not recreate thumbnails
 					c.Logger.Info("metadataScanning: " + item.Path)
-					err = updateMediaItem(item.Path, false, et, convertedEt, h, c, item, cache, metrics)
+					err = updateMediaItem(item.Path, false, et, convertedEt, h, c, item, cache, metrics, signatureFromInfo(file))
 					if err != nil {
 						c.Logger.Error("error updating media item during metadata scan", "error", err)
 					} else {
@@ -236,7 +243,10 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 			}()
 
 			if err != nil {
-				return fmt.Errorf("error walking media directory %v", err)
+				c.Logger.Error("error walking media directory", "path", p, "kind", classifyStatError(err), "error", err)
+				// A failed directory entry is not evidence that a media item was
+				// deleted. Skip it and let WalkDir continue where possible.
+				return nil
 
 			}
 			if !info.IsDir() {
@@ -251,35 +261,37 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 				}
 
 				// remove working dir from path to store a relative ref in db
-				relative_path := strings.Replace(p, config.MediaPath(c)+"/", "", 1)
+				relative_path, err := filepath.Rel(config.MediaPath(c), p)
+				if err != nil {
+					return fmt.Errorf("error making relative path for %s: %w", p, err)
+				}
 				absolute_path := filepath.Join(config.MediaPath(c), relative_path)
 
-				// check if image exists in db
 				statStarted := time.Now()
-				file, err := os.Stat(absolute_path)
+				fileSignature, err := signatureFromDirEntry(info)
 				metrics.addDuration(&metrics.data.FilesystemStat, time.Since(statStarted))
 				metrics.mu.Lock()
 				metrics.data.StatCalls++
 				metrics.mu.Unlock()
 				if err != nil {
-					c.Logger.Error("error stating file:", "error", err)
+					c.Logger.Error("error getting file information", "path", relative_path, "kind", classifyStatError(err), "error", err)
 					return nil
 				}
 
 				// skip previously scanned items that had an error
 				erroredImage := false
 				if lastErrorTime, ok := scanErrors[relative_path]; ok {
-					if file.ModTime().Before(lastErrorTime) {
+					if fileSignature.modTime.Before(lastErrorTime) {
 						c.Logger.Info("skipping image " + relative_path + " as it was previously scanned and had an error.")
 						erroredImage = true
 					}
 				}
 
-				if !mediaExists(items, relative_path) && !erroredImage {
+				if _, exists := itemsByPath[relative_path]; !exists && !erroredImage {
 
 					// check if file is an image
 					if isImage(p) {
-						err = addImage(relative_path, absolute_path, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
+						err = addImage(relative_path, absolute_path, fileSignature, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
 						if err != nil {
 							c.Logger.Error("error adding image "+absolute_path, "error", err)
 							err := TrackScanError(relative_path, time.Now(), err, c)
@@ -293,7 +305,7 @@ func Scan(scanType string, c Conf, cache *cache.Cache) (string, error) {
 						}
 
 					} else if isVideo(p) {
-						err = addVideo(relative_path, absolute_path, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
+						err = addVideo(relative_path, absolute_path, fileSignature, false, c.PreGenerateThumb, et, convertedEt, h, c, cache, metrics)
 						if err != nil {
 							c.Logger.Error("error adding video "+absolute_path, "error", err)
 						} else {
@@ -507,29 +519,16 @@ func ThumbScan(c Conf) (string, error) {
 
 }
 
-// mediaExists tests if a media item exists in the db.
-func mediaExists(media []Media, path string) bool {
-	for _, item := range media {
-		if item.Path == path {
-			return true
-		}
-	}
-	return false
-}
-
 // mediaModified tests if a media item has been modified after its addition to the db.
-func mediaModified(media Media, c Conf) bool {
-
-	media_path := config.MediaPath(c)
-	file, err := os.Stat(filepath.Join(media_path, media.Path))
-	if err != nil {
-		c.Logger.Error("error stating file:", "err", err)
+// The caller supplies the successful stat result from the existing-item pass so
+// discovery does not stat the same path twice.
+func mediaModified(media Media, file os.FileInfo, c Conf) bool {
+	if file == nil {
+		c.Logger.Error("cannot compare media modification: missing file info", "path", media.Path)
+		return false
 	}
 
-	db_modified := media.Modified.Format("2006-01-02T15:04:05")
-	file_modified := file.ModTime().UTC().Format("2006-01-02T15:04:05")
-
-	return db_modified != file_modified
+	return !media.Modified.Equal(file.ModTime())
 }
 
 func isImage(path string) bool {
@@ -537,9 +536,10 @@ func isImage(path string) bool {
 		return false
 	}
 
+	ext := strings.ToLower(filepath.Ext(path))
 	accepted := []string{".jpg", ".jpeg", ".heic", ".gif", ".png"}
-	for _, ext := range accepted {
-		if strings.HasSuffix(path, ext) || strings.HasSuffix(path, strings.ToUpper(ext)) && !strings.HasPrefix(path, ".") {
+	for _, acceptedExt := range accepted {
+		if acceptedExt == ext {
 			return true
 		}
 	}
@@ -551,9 +551,10 @@ func isVideo(path string) bool {
 		return false
 	}
 
+	ext := strings.ToLower(filepath.Ext(path))
 	accepted := []string{".mp4", ".mov"}
-	for _, ext := range accepted {
-		if strings.HasSuffix(path, ext) || strings.HasSuffix(path, strings.ToUpper(ext)) && !strings.HasPrefix(path, ".") {
+	for _, acceptedExt := range accepted {
+		if acceptedExt == ext {
 			return true
 		}
 	}
